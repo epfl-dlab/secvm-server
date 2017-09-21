@@ -5,16 +5,16 @@ import java.sql.SQLException;
 
 public class ParticipationPackage extends UserPackage {
 	
-	public ParticipationPackage(String experimentId, String packageId, String features) {
-		super(experimentId, packageId, features);
+	public ParticipationPackage(int svmId, int iteration, String packageRandomId) {
+		super(svmId, iteration, packageRandomId);
 	}
 
 	@Override
 	public PreparedStatement fillStatement(PreparedStatement statement)
 			throws SQLException {
-		statement.setString(1, experimentId);
-		statement.setString(2, packageId);
-		statement.setString(3, features);
+		statement.setInt(1, svmId);
+		statement.setInt(2, iteration);
+		statement.setString(3, packageRandomId);
 		return statement;
 	}
 

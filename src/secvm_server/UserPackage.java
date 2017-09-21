@@ -9,16 +9,16 @@ import java.sql.SQLException;
  */
 public abstract class UserPackage {
 	
-	protected String experimentId;
-	protected String packageId;
-	protected String features;
+	protected int svmId;
+	protected int iteration;
+	protected String packageRandomId;
 	
-	public UserPackage(String experimentId, String packageId, String features) {
-		this.experimentId = experimentId;
-		this.packageId = packageId;
-		this.features = features;
+	public UserPackage(int svmId, int iteration, String packageRandomId) {
+		this.svmId = svmId;
+		this.iteration = iteration;
+		this.packageRandomId = packageRandomId;
 	}
-	
+
 	/**
 	 * Populates a PreparedStatement with the attributes of this UserPackage.
 	 * @param statement the statement to be populated
