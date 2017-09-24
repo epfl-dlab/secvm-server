@@ -3,7 +3,10 @@ package secvm_server;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +18,7 @@ public class Server {
 	public static final String DB_USER = "java";
 	public static final String DB_PASSWORD = "java";
 	public static final String DB_SERVER = "localhost";
-	public static final String DB_NAME = "secvm";
+	public static final String DB_NAME = "SecVM_DB";
 	
 	// TODO: count experiment_id up in Base64 characters (to make it small)
 	
@@ -33,6 +36,7 @@ public class Server {
 	private PreparedStatement participationPackageInsertStatement;
 	private PreparedStatement trainPackageInsertStatement;
 	private PreparedStatement testPackageInsertStatement;
+	private PreparedStatement getTrainConfigurationStatement;
 	
 	public Server() {
 		this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
@@ -43,7 +47,9 @@ public class Server {
 					.INSERT_INTO_PARTICIPATION_DB
 					.createPreparedStatement(dbConnection);
 			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
-			
+			getTrainConfigurationStatement = SqlQueries
+					.GET_TRAIN_CONFIGURATIONS
+					.createPreparedStatement(dbConnection);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -52,7 +58,31 @@ public class Server {
 	
 	public void start() {
 		while (!stop) {
-			
+			try {
+				Set<TrainWeightsConfiguration> trainConfigurations = new HashSet<>();
+				// includes past iterations that are not interesting to us anymore
+				ResultSet allTrainConfigurations = getTrainConfigurationStatement.executeQuery();
+				// to see if we have arrived at a new svm
+				int lastSvmId = -1;
+				// if the current svm has already been added to trainConfigurations, its (smaller)
+				// iterations can be skipped
+				boolean currSvmAlreadyAdded = false;
+				while (allTrainConfigurations.next()) {
+					int currSvmId = allTrainConfigurations.getInt("svm.svm_id");
+					if (currSvmId == lastSvmId && currSvmAlreadyAdded) {
+						continue;
+					}
+					
+					// the minimum participant quota for the last weight vector has been reached;
+					// create a new one
+					if (allTrainConfigurations.getInt("svm.min_number_train_participants")
+							<= allTrainConfigurations.getInt("weight_vector.num_participants")) {
+						
+					}
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		packageLoggingExecutor.shutdown();
@@ -85,10 +115,10 @@ public class Server {
 			String user, String password, String serverName, String dbName)
 					throws SQLException {
 		MysqlDataSource dataSource = new MysqlDataSource();
-		dataSource.setUser("vahartma");
-		dataSource.setPassword("vahartma");
-		dataSource.setServerName("localhost");
-		dataSource.setDatabaseName("wikiprivacy");
+		dataSource.setUser(user);
+		dataSource.setPassword(password);
+		dataSource.setServerName(serverName);
+		dataSource.setDatabaseName(dbName);
 		return dataSource.getConnection();
 	}
 
