@@ -1,5 +1,7 @@
 package secvm_server;
 
+import java.util.List;
+
 /**
  * Contains the information about a weight vector that is going to be sent to the users.
  *
@@ -9,11 +11,11 @@ public class WeightsConfiguration {
 	private int svmId;
 	private int iteration;
 	private int numBins;
-	private float[] diceRollProbabilities;
+	private List<Float> diceRollProbabilities;
 	// if (features.length == 2), then use the merged vector
-	private Features[] features;
+	private List<Features> features;
 	
-	public WeightsConfiguration(int svmId, int iteration, int numBins, float[] diceRollProbabilities, Features[] features) {
+	public WeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<Features> features) {
 		this.svmId = svmId;
 		this.iteration = iteration;
 		this.numBins = numBins;
@@ -33,11 +35,11 @@ public class WeightsConfiguration {
 		return numBins;
 	}
 
-	public float[] getDiceRollProbabilities() {
+	public List<Float> getDiceRollProbabilities() {
 		return diceRollProbabilities;
 	}
 
-	public Features[] getFeatures() {
+	public List<Features> getFeatures() {
 		return features;
 	}
 
