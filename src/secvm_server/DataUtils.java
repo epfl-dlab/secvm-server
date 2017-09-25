@@ -3,7 +3,7 @@ package secvm_server;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class DataConverter {
+public final class DataUtils {
 	
 	public static <T extends Number> String numberListToBase64(List<T> list) {
 		// TODO: implementation
