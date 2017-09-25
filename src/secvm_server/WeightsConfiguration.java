@@ -15,6 +15,8 @@ public class WeightsConfiguration {
 	// if (features.length == 2), then use the merged vector
 	private List<Features> features;
 	
+	public WeightsConfiguration() {};
+	
 	public WeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<Features> features) {
 		this.svmId = svmId;
 		this.iteration = iteration;
@@ -26,23 +28,42 @@ public class WeightsConfiguration {
 	public int getSvmId() {
 		return svmId;
 	}
-	
+
+	public void setSvmId(int svmId) {
+		this.svmId = svmId;
+	}
+
 	public int getIteration() {
 		return iteration;
+	}
+
+	public void setIteration(int iteration) {
+		this.iteration = iteration;
 	}
 
 	public int getNumBins() {
 		return numBins;
 	}
 
+	public void setNumBins(int numBins) {
+		this.numBins = numBins;
+	}
+
 	public List<Float> getDiceRollProbabilities() {
 		return diceRollProbabilities;
+	}
+
+	public void setDiceRollProbabilities(List<Float> diceRollProbabilities) {
+		this.diceRollProbabilities = diceRollProbabilities;
 	}
 
 	public List<Features> getFeatures() {
 		return features;
 	}
 
+	public void setFeatures(List<Features> features) {
+		this.features = features;
+	}
 
 	@Override
 	public int hashCode() {
