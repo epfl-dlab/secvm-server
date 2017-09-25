@@ -16,7 +16,9 @@ public class WeightsConfiguration {
 	// if (features.length == 2), then use the merged vector
 	private List<FeatureVectorProperties> features;
 	
-	public WeightsConfiguration() {}
+	public WeightsConfiguration() {
+		features = new ArrayList<>();
+	}
 	
 	public WeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features) {
 		this.svmId = svmId;
@@ -65,7 +67,13 @@ public class WeightsConfiguration {
 	public void setFeatures(List<FeatureVectorProperties> features) {
 		this.features = features;
 	}
+	
+	
+	public void addFeatures(FeatureVectorProperties featureVector) {
+		this.features.add(featureVector);
+	}
 
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
