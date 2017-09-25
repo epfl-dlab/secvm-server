@@ -1,22 +1,23 @@
 package secvm_server;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class TrainWeightsConfiguration extends WeightsConfiguration {
 	private int min_number_train_participants;
 	private int num_participants;
 	private float lambda;
-	private int[] train_outcomes_dice_roll;
+	private List<Integer> train_outcomes_dice_roll;
 	
 	// the weight vector that is being sent to the users for training
-	private float[] weightsToUseForTraining;
+	private List<Float> weightsToUseForTraining;
 	// the weight vector that is being updated by the users
 	// AtomicReferenceArray instead of regular array for concurrent updates
 	private AtomicReferenceArray<Float> weightsBeingTrained;
 	
 	public TrainWeightsConfiguration(int svmId, int numBins, float[] diceRollProbabilities, Features[] features,
-			int min_number_train_participants, int num_participants, float lambda, int[] train_outcomes_dice_roll,
-			float[] weightsToUseForTraining, AtomicReferenceArray<Float> weightsBeingTrained) {
+			int min_number_train_participants, int num_participants, float lambda, List<Integer> train_outcomes_dice_roll,
+			List<Float> weightsToUseForTraining, AtomicReferenceArray<Float> weightsBeingTrained) {
 		super(svmId, numBins, diceRollProbabilities, features);
 		this.min_number_train_participants = min_number_train_participants;
 		this.num_participants = num_participants;
@@ -42,11 +43,11 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		return lambda;
 	}
 
-	public int[] getTrain_outcomes_dice_roll() {
+	public List<Integer> getTrain_outcomes_dice_roll() {
 		return train_outcomes_dice_roll;
 	}
 
-	public float[] getWeightsToUseForTraining() {
+	public List<Float> getWeightsToUseForTraining() {
 		return weightsToUseForTraining;
 	}
 	
