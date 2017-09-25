@@ -19,7 +19,7 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		super();
 	}
 	
-	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<Features> features,
+	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
 			int min_number_train_participants, int num_participants, float lambda, List<Integer> train_outcomes_dice_roll,
 			List<Float> weightsToUseForTraining, AtomicReferenceArray<Float> weightsBeingTrained) {
 		super(svmId, iteration, numBins, diceRollProbabilities, features);

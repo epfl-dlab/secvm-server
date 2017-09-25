@@ -13,7 +13,7 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	}
 	
 	public TestWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities,
-			List<Features> features, List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting) {
+			List<FeatureVectorProperties> features, List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting) {
 		super(svmId, iteration, numBins, diceRollProbabilities, features);
 		this.testOutcomesDiceRoll = testOutcomesDiceRoll;
 		this.weightsToUseForTesting = weightsToUseForTesting;

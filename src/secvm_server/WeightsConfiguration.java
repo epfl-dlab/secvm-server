@@ -1,5 +1,6 @@
 package secvm_server;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,11 +14,11 @@ public class WeightsConfiguration {
 	private int numBins;
 	private List<Float> diceRollProbabilities;
 	// if (features.length == 2), then use the merged vector
-	private List<Features> features;
+	private List<FeatureVectorProperties> features;
 	
-	public WeightsConfiguration() {};
+	public WeightsConfiguration() {}
 	
-	public WeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<Features> features) {
+	public WeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features) {
 		this.svmId = svmId;
 		this.iteration = iteration;
 		this.numBins = numBins;
@@ -57,11 +58,11 @@ public class WeightsConfiguration {
 		this.diceRollProbabilities = diceRollProbabilities;
 	}
 
-	public List<Features> getFeatures() {
+	public List<FeatureVectorProperties> getFeatures() {
 		return features;
 	}
 
-	public void setFeatures(List<Features> features) {
+	public void setFeatures(List<FeatureVectorProperties> features) {
 		this.features = features;
 	}
 
@@ -91,12 +92,12 @@ public class WeightsConfiguration {
 	}
 
 
-	public static class Features {
+	public static class FeatureVectorProperties {
 		private String featureType;
 		private int numFeatures;
 		private int numHashes;
 		
-		public Features(String featureType, int numFeatures, int numHashes) {
+		public FeatureVectorProperties(String featureType, int numFeatures, int numHashes) {
 			this.featureType = featureType;
 			this.numFeatures = numFeatures;
 			this.numHashes = numHashes;
