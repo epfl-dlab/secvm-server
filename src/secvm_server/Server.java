@@ -5,11 +5,16 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
@@ -59,27 +64,79 @@ public class Server {
 	public void start() {
 		while (!stop) {
 			try {
+				// TODO: refactor fetching of train and test configurations into their own functions
 				Set<TrainWeightsConfiguration> trainConfigurations = new HashSet<>();
 				// includes past iterations that are not interesting to us anymore
 				ResultSet allTrainConfigurations = getTrainConfigurationStatement.executeQuery();
-				// to see if we have arrived at a new svm
-				int lastSvmId = -1;
-				// if the current svm has already been added to trainConfigurations, its (smaller)
-				// iterations can be skipped
-				boolean currSvmAlreadyAdded = false;
+
+				// the last configuration that was added to trainConfigurations
+				TrainWeightsConfiguration lastConfiguration = new TrainWeightsConfiguration();
+				lastConfiguration.setSvmId(-1);
+				lastConfiguration.setIteration(-1);
+				
 				while (allTrainConfigurations.next()) {
-					int currSvmId = allTrainConfigurations.getInt("svm.svm_id");
-					if (currSvmId == lastSvmId && currSvmAlreadyAdded) {
-						continue;
-					}
+					int svmId = allTrainConfigurations.getInt("svm.svm_id");
+					int iteration = allTrainConfigurations.getInt("weight_vector.iteration");
+					WeightsConfiguration.FeatureVectorProperties features = new WeightsConfiguration.FeatureVectorProperties(
+							allTrainConfigurations.getString("feature_vector.feature_type"),
+							allTrainConfigurations.getInt("feature_vector.num_features"),
+							allTrainConfigurations.getInt("feature_vector.num_hashes"));
 					
-					// the minimum participant quota for the last weight vector has been reached;
-					// create a new one
-					if (allTrainConfigurations.getInt("svm.min_number_train_participants")
-							<= allTrainConfigurations.getInt("weight_vector.num_participants")) {
+					if (svmId == lastConfiguration.getSvmId()) {
+						if (iteration == lastConfiguration.getIteration()) {
+							lastConfiguration.addFeatures(features);
+						// this is just a previous iteration of the already added weights configuration
+						} else {
+							continue;
+						}
+					} else {
+						lastConfiguration = new TrainWeightsConfiguration();
 						
+						float lambda = allTrainConfigurations.getFloat("svm.lambda");
+						List<Float> diceRollProbabilities = DataConverter.base64ToNumberList(
+								allTrainConfigurations.getString("dice_roll.probabilities"));
+						List<Integer> trainOutcomes = DataConverter.base64ToNumberList(
+								allTrainConfigurations.getString("svm.train_outcomes_dice_roll"));
+						int numBins = allTrainConfigurations.getInt("svm.num_bins");
+						List<Float> currWeights = DataConverter.base64ToNumberList(
+								allTrainConfigurations.getString("weight_vector.weights"));
+						
+						int minNumberTrainParticipants = allTrainConfigurations.getInt("svm.min_number_train_participants");
+						int numParticipants = allTrainConfigurations.getInt("weight_vector.num_participants");
+						
+						lastConfiguration.setSvmId(svmId);
+						lastConfiguration.setLambda(lambda);
+						lastConfiguration.setNumBins(numBins);
+						lastConfiguration.setDiceRollProbabilities(diceRollProbabilities);
+						lastConfiguration.setTrainOutcomesDiceRoll(trainOutcomes);
+						lastConfiguration.addFeatures(features);
+						lastConfiguration.setMinNumberTrainParticipants(minNumberTrainParticipants);
+					
+						// TODO: check how the insertion/modification of the db affects in which order
+						// we should fetch the train and the test configurations from the db
+						
+						// the minimum participant quota for the last weight vector has been reached
+						// or we are at the initial weight vector; create a new one
+						if (numParticipants >= minNumberTrainParticipants || iteration == 0) {
+							// TODO: add training_end_time to previous weight_vector entry
+							// TODO: create new entry in weight_vector table
+							if (iteration == 0) {
+								// wrapped in constructor to make it mutable
+								currWeights = new ArrayList<>(Collections.nCopies(numBins, new Float(0)));
+								// TODO: update cell "weights" of previous weight_vector entry with the zero vector
+								// of length numBins, i.e. currWeights
+							}
+						}
+						
+						lastConfiguration.setIteration(iteration + 1);
+						lastConfiguration.setGradientNotNormalized(new AtomicReferenceArray<>(numBins));
+						lastConfiguration.setWeightsToUseForTraining(currWeights);
+						
+						trainConfigurations.add(lastConfiguration);
 					}
 				}
+				// TODO: remove this
+				stop = true;
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
