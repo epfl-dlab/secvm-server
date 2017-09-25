@@ -11,9 +11,12 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	
 	// the weight vector that is being sent to the users for training
 	private List<Float> weightsToUseForTraining;
-	// the weight vector that is being updated by the users
+	// the gradient that is being updated by the users; not yet divided by the number of users 
 	// AtomicReferenceArray instead of regular array for concurrent updates
-	private AtomicReferenceArray<Float> weightsBeingTrained;
+	private AtomicReferenceArray<Integer> gradientNotNormalized;
+	// the number of vectors of which gradientNotNormalized is the sum, i.e. the number of users
+	// that participated in the current update round
+	private int numGradientUpdateVectors;
 	
 	public TrainWeightsConfiguration() {
 		super();
@@ -21,14 +24,16 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	
 	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
 			int minNumberTrainParticipants, int numParticipants, float lambda, List<Integer> trainOutcomesDiceRoll,
-			List<Float> weightsToUseForTraining, AtomicReferenceArray<Float> weightsBeingTrained) {
+			List<Float> weightsToUseForTraining, AtomicReferenceArray<Integer> gradientNotNormalized,
+			int numGradientUpdateVectors) {
 		super(svmId, iteration, numBins, diceRollProbabilities, features);
 		this.minNumberTrainParticipants = minNumberTrainParticipants;
 		this.numParticipants = numParticipants;
 		this.lambda = lambda;
 		this.trainOutcomesDiceRoll = trainOutcomesDiceRoll;
 		this.weightsToUseForTraining = weightsToUseForTraining;
-		this.weightsBeingTrained = weightsBeingTrained;
+		this.gradientNotNormalized = gradientNotNormalized;
+		this.numGradientUpdateVectors = numGradientUpdateVectors;
 	}
 	
 	public int getMinNumberTrainParticipants() {
@@ -71,21 +76,28 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		this.weightsToUseForTraining = weightsToUseForTraining;
 	}
 
-	public AtomicReferenceArray<Float> getWeightsBeingTrained() {
-		return weightsBeingTrained;
+	public AtomicReferenceArray<Integer> getGradientNotNormalized() {
+		return gradientNotNormalized;
 	}
 
-	public void setWeightsBeingTrained(AtomicReferenceArray<Float> weightsBeingTrained) {
-		this.weightsBeingTrained = weightsBeingTrained;
+	public void setGradientNotNormalized(AtomicReferenceArray<Integer> gradientNotNormalized) {
+		this.gradientNotNormalized = gradientNotNormalized;
 	}
 
-	
+	public int getNumGradientUpdateVectors() {
+		return numGradientUpdateVectors;
+	}
+
+	public void setNumGradientUpdateVectors(int numGradientUpdateVectors) {
+		this.numGradientUpdateVectors = numGradientUpdateVectors;
+	}
+
 	// as opposed to the other getters/setters, these two work index-based
-	public Float getWeightsBeingTrainedByIndex(int index) {
-		return weightsBeingTrained.get(index);
+	public Integer getGradientNotNormalizedByIndex(int index) {
+		return gradientNotNormalized.get(index);
 	}
 
-	public void setWeightsBeingTrainedByIndex(int index, Float value) {
-		this.weightsBeingTrained.set(index, value);
+	public void setGradientNotNormalizedByIndex(int index, Integer value) {
+		this.gradientNotNormalized.set(index, value);
 	}
 }
