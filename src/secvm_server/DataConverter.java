@@ -2,7 +2,7 @@ package secvm_server;
 
 import java.util.List;
 
-public final class StringCoder {
+public final class DataConverter {
 	
 	public static <T extends Number> String numberListToBase64(List<T> list) {
 		
