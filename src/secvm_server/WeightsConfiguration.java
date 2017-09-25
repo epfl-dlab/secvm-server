@@ -42,6 +42,32 @@ public class WeightsConfiguration {
 	}
 
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + iteration;
+		result = prime * result + svmId;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		WeightsConfiguration other = (WeightsConfiguration) obj;
+		if (iteration != other.iteration)
+			return false;
+		if (svmId != other.svmId)
+			return false;
+		return true;
+	}
+
+
 	public static class Features {
 		private String featureType;
 		private int numFeatures;
