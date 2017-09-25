@@ -8,8 +8,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,7 +67,7 @@ public class Server {
 		while (!stop) {
 			try {
 				// TODO: refactor fetching of train and test configurations into their own functions
-				Set<TrainWeightsConfiguration> trainConfigurations = new HashSet<>();
+				Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations = new HashMap<>();
 				// includes past iterations that are not interesting to us anymore
 				ResultSet allTrainConfigurations = getTrainConfigurationStatement.executeQuery();
 
@@ -132,7 +134,9 @@ public class Server {
 						lastConfiguration.setGradientNotNormalized(new AtomicReferenceArray<>(numBins));
 						lastConfiguration.setWeightsToUseForTraining(currWeights);
 						
-						trainConfigurations.add(lastConfiguration);
+						trainConfigurations.put(
+								new ServerRequestId(lastConfiguration.getSvmId(), lastConfiguration.getIteration()),
+								lastConfiguration);
 					}
 				}
 				// TODO: remove this
