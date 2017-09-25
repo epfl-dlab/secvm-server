@@ -22,7 +22,7 @@ public enum SqlQueries {
 			"	AND svm.dice_roll_id = dice_roll.id\n" + 
 			"ORDER BY svm.svm_id, weight_vector.iteration DESC"),
 	
-	GET_TEST_CONFIGURATION(
+	GET_TEST_CONFIGURATIONS(
 			"SELECT svm.svm_id, svm.num_bins, svm.dice_roll_probabilities, " + 
 			"	svm.test_outcomes_dice_roll, feature_vector.feature_type, " + 
 			"	feature_vector.num_features, feature_vector.num_hashes, weight_vector.weights\n" + 
