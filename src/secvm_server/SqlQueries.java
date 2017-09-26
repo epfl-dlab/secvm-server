@@ -10,6 +10,9 @@ public enum SqlQueries {
 	INSERT_INTO_PARTICIPATION_DB(
 			"INSERT INTO participation VALUES(?, ?, ?, UNIX_TIMESTAMP(NOW(6)))"),
 	
+	INSERT_INTO_WEIGHTS_DB(
+			"INSERT INTO weight_vector VALUES(?, ?, NOW(6), NULL, ?, ?)"),
+	
 	GET_TRAIN_CONFIGURATIONS(
 			"SELECT svm.svm_id, svm.min_number_train_participants, weight_vector.num_participants," + 
 			"	svm.lambda, svm.num_bins, dice_roll.probabilities, svm.train_outcomes_dice_roll," +
