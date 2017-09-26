@@ -47,6 +47,7 @@ public class Server {
 	private PreparedStatement testPackageInsertStatement;
 	private PreparedStatement getTrainConfigurationsStatement;
 	private PreparedStatement getTestConfigurationsStatement;
+	private PreparedStatement weightsInsertStatement;
 	
 	public Server() {
 		this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
@@ -62,6 +63,10 @@ public class Server {
 					.createPreparedStatement(dbConnection);
 			getTestConfigurationsStatement = SqlQueries
 					.GET_TEST_CONFIGURATIONS
+					.createPreparedStatement(dbConnection);
+			
+			weightsInsertStatement = SqlQueries
+					.INSERT_INTO_WEIGHTS_DB
 					.createPreparedStatement(dbConnection);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -208,8 +213,8 @@ public class Server {
 				List<Integer> trainOutcomes = DataUtils.base64ToNumberList(
 						allTrainConfigurations.getString("svm.train_outcomes_dice_roll"));
 				int numBins = allTrainConfigurations.getInt("svm.num_bins");
-				List<Float> currWeights = DataUtils.base64ToNumberList(
-						allTrainConfigurations.getString("weight_vector.weights"));
+				String currWeightsBase64 = allTrainConfigurations.getString("weight_vector.weights");
+				List<Float> currWeights = DataUtils.base64ToNumberList(currWeightsBase64);
 				
 				int minNumberTrainParticipants = allTrainConfigurations.getInt("svm.min_number_train_participants");
 				int numParticipants = allTrainConfigurations.getInt("weight_vector.num_participants");
@@ -225,17 +230,24 @@ public class Server {
 				// the minimum participant quota for the last weight vector has been reached
 				// or we are at the initial weight vector; create a new one
 				if (numParticipants >= minNumberTrainParticipants || iteration == 0) {
-					// TODO: add training_end_time to previous weight_vector entry
-					// TODO: create new entry in weight_vector table
 					if (iteration == 0) {
 						// wrapped in constructor to make it mutable
 						currWeights = new ArrayList<>(Collections.nCopies(numBins, new Float(0)));
-						// TODO: update cell "weights" of previous weight_vector entry with the zero vector
+						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
+						// TODO: update cell "weights" of weight_vector entry with the zero vector
 						// of length numBins, i.e. currWeights
 					}
+					
+					++iteration;
+					// TODO: add training_end_time to previous weight_vector entry
+					weightsInsertStatement.setInt(1, latestConfiguration.getSvmId());
+					weightsInsertStatement.setInt(2, iteration);
+					weightsInsertStatement.setInt(3, 0);
+					weightsInsertStatement.setString(4, currWeightsBase64);
+					weightsInsertStatement.executeUpdate();
 				}
 				
-				latestConfiguration.setIteration(iteration + 1);
+				latestConfiguration.setIteration(iteration);
 				latestConfiguration.setGradientNotNormalized(new AtomicReferenceArray<>(numBins));
 				latestConfiguration.setWeightsToUseForTraining(currWeights);
 				
