@@ -84,6 +84,9 @@ public class Server {
 			participationPackageInsertStatement = SqlQueries
 					.INSERT_INTO_PACKAGE_PARTICIPATION_DB
 					.createPreparedStatement(dbConnection);
+			trainPackageInsertStatement = SqlQueries
+					.INSERT_INTO_PACKAGE_TRAIN_DB
+					.createPreparedStatement(dbConnection);
 			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
 			getTrainConfigurationsStatement = SqlQueries
 					.GET_TRAIN_CONFIGURATIONS
@@ -110,36 +113,38 @@ public class Server {
 	}
 	
 	public void start() {
-//		try {
-//			// TODO: put everything into this try catch
-//			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
-//			packageListener.start();
-//		} catch (IOException e1) {
-//			e1.printStackTrace();
-//		}
-//		boolean blubb = true;
-//		while (blubb) {
-//			try {
-//				Socket s = new Socket("127.0.0.1", PORT);
-//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-//				osw.write("{\n" + 
-//						"  \"e\": [3, 32],\n" + 
-//						"  \"p\": \"fdskl\"\n" + 
-//						"}");
-//				osw.flush();
-////				System.out.println(s.isConnected());
-//				ArrayList<Integer> l = new ArrayList<>();
-//				for (int i = 0; i < 10_000_000; ++i) {
-//					l.add(i);
-//				}
-//				l.clear();
-//			} catch (UnknownHostException e) {
-//				e.printStackTrace();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
-//			
-//		}
+		try {
+			// TODO: put everything into this try catch
+			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
+			packageListener.start();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		boolean blubb = true;
+		while (blubb) {
+			try {
+				Socket s = new Socket("127.0.0.1", PORT);
+				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+				osw.write("{\n" + 
+						"  \"e\": [1, 2],\n" + 
+						"  \"p\": \"nmbm\",\n" + 
+						"  \"i\": 432432,\n" + 
+						"  \"v\": 1\n" + 
+						"}");
+				osw.flush();
+//				System.out.println(s.isConnected());
+				ArrayList<Integer> l = new ArrayList<>();
+				for (int i = 0; i < 10_000_000; ++i) {
+					l.add(i);
+				}
+				l.clear();
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+		}
 		
 		while (!stop) {
 			try {
@@ -417,7 +422,12 @@ public class Server {
 			    		JsonElement updateValueJsonElement = dataReceived.get("v");
 			    		// train package
 			    		if (updateValueJsonElement != null) {
-				    		// TODO: put into db
+			    			int index = dataReceived.get("i").getAsInt();
+			    			int value = dataReceived.get("v").getAsInt();
+			    			packageReceived = new TrainPackage(
+			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+			    					index, value);
+			    			packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
 				    		// TODO: update trainConfigurations
 			    		// participation package
 			    		} else {
