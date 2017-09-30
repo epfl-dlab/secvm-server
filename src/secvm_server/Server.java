@@ -416,11 +416,11 @@ public class Server {
 			    	int svmId = experimentId.get(0).getAsInt();
 			    	int iteration = experimentId.get(1).getAsInt();
 			    	String packageRandomId = dataReceived.get("p").getAsString();
-			    	JsonElement svmPredictionJsonElement = dataReceived.get("s");
+			    	JsonElement predictedGenderJsonElement = dataReceived.get("s");
 			    	// test package
-			    	if (svmPredictionJsonElement != null) {
+			    	if (predictedGenderJsonElement != null) {
 		    			int trueGender = dataReceived.get("l").getAsInt();
-		    			int predictedGender = dataReceived.get("s").getAsInt();
+		    			int predictedGender = predictedGenderJsonElement.getAsInt();
 		    			packageReceived = new TestPackage(
 		    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 		    					trueGender, predictedGender);
@@ -431,7 +431,7 @@ public class Server {
 			    		// train package
 			    		if (updateValueJsonElement != null) {
 			    			int index = dataReceived.get("i").getAsInt();
-			    			int value = dataReceived.get("v").getAsInt();
+			    			int value = updateValueJsonElement.getAsInt();
 			    			packageReceived = new TrainPackage(
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 			    					index, value);
