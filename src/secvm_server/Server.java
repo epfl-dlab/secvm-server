@@ -1,5 +1,12 @@
 package secvm_server;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -13,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +35,11 @@ public class Server {
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
 	
+	public static final int PORT = 8080;
+	
 	public static final int NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING = 2;
+	
+	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 8;
 	
 	// TODO: count experiment_id up in Base64 characters (to make it small)
 	
@@ -39,7 +51,9 @@ public class Server {
 	
 	// Should the server be stopped?
 	private boolean stop = false;
-	private ExecutorService packageLoggingExecutor;
+	// Is the server currently currently loading the next configurations
+	// from the db or updating the corresponding files?
+	private boolean loadingOrUpdatingConfigurations = false;
 	// TODO: close these in the end if not null
 	private Connection dbConnection;
 	private PreparedStatement participationPackageInsertStatement;
@@ -50,7 +64,6 @@ public class Server {
 	private PreparedStatement weightsInsertStatement;
 	
 	public Server() {
-		this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
 		try {
 			dbConnection = establishDbConnection(DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME);
 			
@@ -75,12 +88,43 @@ public class Server {
 	}
 	
 	public void start() {
+		try {
+			// TODO: put everything into this try catch
+			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
+			packageListener.start();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		boolean blubb = true;
+		while (blubb) {
+			try {
+				Socket s = new Socket("127.0.0.1", PORT);
+				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+				osw.write("this is a test string");
+				osw.flush();
+//				System.out.println(s.isConnected());
+				ArrayList<Integer> l = new ArrayList<>();
+				for (int i = 0; i < 10_000_000; ++i) {
+					l.add(i);
+				}
+				l.clear();
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+		}
+		
 		while (!stop) {
 			try {
+				loadingOrUpdatingConfigurations = true;
 				// ***** Always call them in this order since loadTestConfigurations depends on the changes
 				// loadTrainConfigurations makes to the db. *****
 				Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations = loadTrainConfigurations();
 				Map<ServerRequestId, TestWeightsConfiguration> testConfigurations = loadTestConfigurations();
+				// TODO: Override configuration file and weight files.
+				loadingOrUpdatingConfigurations = false;
 				// TODO: remove this
 				stop = true;
 			} catch (SQLException e) {
@@ -88,17 +132,17 @@ public class Server {
 			}
 		}
 		
-		packageLoggingExecutor.shutdown();
-		// wait until the logging is finished
-		while (true) {
-			try {
-				if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-					break;
-				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+//		packageLoggingExecutor.shutdown();
+//		// wait until the logging is finished
+//		while (true) {
+//			try {
+//				if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+//					break;
+//				}
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
 		
 		// only then close the db connection
 		try {
@@ -269,6 +313,68 @@ public class Server {
 		dataSource.setServerName(serverName);
 		dataSource.setDatabaseName(dbName);
 		return dataSource.getConnection();
+	}
+	
+	class PackageListener implements Runnable {
+		
+		private ServerSocket serverSocket;
+		private ExecutorService incomingPackageExecutor;
+		private ExecutorService packageLoggingExecutor;
+
+		public PackageListener(int port, int numThreadsPackageProcessing) throws IOException {
+			this.serverSocket = new ServerSocket(port);
+			this.incomingPackageExecutor = Executors.newFixedThreadPool(numThreadsPackageProcessing);
+			this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
+		}
+
+		@Override
+		public void run() {
+			while (!stop) {
+				try {
+					// TODO: add SecurityManager to check if the connection comes from the Cliqz proxy
+					// and otherwise log this event in 'catch (SecurityException e)' 
+					Socket socket = serverSocket.accept();
+					incomingPackageExecutor.submit(new PackageHandler(socket));
+				} catch (SecurityException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			
+			// TODO: Do something like this:
+//			packageLoggingExecutor.shutdown();
+//			// wait until the logging is finished
+//			while (true) {
+//				try {
+//					if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+//						break;
+//					}
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
+		}
+		
+		class PackageHandler implements Runnable {
+			
+			private Socket socket;
+			
+			public PackageHandler(Socket socket) {
+				this.socket = socket;
+			}
+
+			@Override
+			public void run() {
+			    try (BufferedReader socketIn = new BufferedReader(
+			    		new InputStreamReader(socket.getInputStream()))) {
+			    	System.out.println(socketIn.readLine());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			
+		}
 	}
 
 }
