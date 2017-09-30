@@ -64,11 +64,13 @@ public class Server {
 	private PreparedStatement getTestConfigurationsStatement;
 	private PreparedStatement weightsInsertStatement;
 	private PreparedStatement weightsUpdateStatement;
+	private PreparedStatement trainEndTimeUpdateStatement;
 	
 	public Server() {
 		try {
 			dbConnection = establishDbConnection(DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME);
 			
+			// TODO: maybe make this a bit nicer with a loop and a Map or alike
 			participationPackageInsertStatement = SqlQueries
 					.INSERT_INTO_PARTICIPATION_DB
 					.createPreparedStatement(dbConnection);
@@ -86,6 +88,10 @@ public class Server {
 			
 			weightsUpdateStatement = SqlQueries
 					.UPDATE_WEIGHTS
+					.createPreparedStatement(dbConnection);
+			
+			trainEndTimeUpdateStatement = SqlQueries
+					.UPDATE_TRAIN_END_TIME
 					.createPreparedStatement(dbConnection);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -290,8 +296,13 @@ public class Server {
 						weightsUpdateStatement.executeUpdate();
 					}
 					
+					trainEndTimeUpdateStatement.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+					trainEndTimeUpdateStatement.setInt(2, svmId);
+					trainEndTimeUpdateStatement.setInt(3, iteration);
+					trainEndTimeUpdateStatement.executeUpdate();
+					
 					++iteration;
-					// TODO: add training_end_time to previous weight_vector entry
+					
 					weightsInsertStatement.setInt(1, latestConfiguration.getSvmId());
 					weightsInsertStatement.setInt(2, iteration);
 					weightsInsertStatement.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
