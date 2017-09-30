@@ -2,11 +2,12 @@ package secvm_server;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 
 public class ParticipationPackage extends UserPackage {
 	
-	public ParticipationPackage(int svmId, int iteration, String packageRandomId) {
-		super(svmId, iteration, packageRandomId);
+	public ParticipationPackage(int svmId, int iteration, String packageRandomId, Timestamp arrivalTime) {
+		super(svmId, iteration, packageRandomId, arrivalTime);
 	}
 
 	@Override
