@@ -24,6 +24,11 @@ public abstract class UserPackage {
 	 * @param statement the statement to be populated
 	 * @return the same statement, now populated
 	 */
-	public abstract PreparedStatement fillStatement(PreparedStatement statement)
-			throws SQLException;
+	public PreparedStatement fillStatement(PreparedStatement statement)
+			throws SQLException {
+		statement.setInt(1, svmId);
+		statement.setInt(2, iteration);
+		statement.setString(3, packageRandomId);
+		return statement;
+	}
 }

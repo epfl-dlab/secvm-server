@@ -12,10 +12,7 @@ public class ParticipationPackage extends UserPackage {
 	@Override
 	public PreparedStatement fillStatement(PreparedStatement statement)
 			throws SQLException {
-		statement.setInt(1, svmId);
-		statement.setInt(2, iteration);
-		statement.setString(3, packageRandomId);
-		return statement;
+		return super.fillStatement(statement);
 	}
 
 }
