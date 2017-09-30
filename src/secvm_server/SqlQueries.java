@@ -7,8 +7,8 @@ import java.sql.Statement;
 
 public enum SqlQueries {
 
-	INSERT_INTO_PARTICIPATION_DB(
-			"INSERT INTO participation VALUES(?, ?, ?, UNIX_TIMESTAMP(NOW(6)))"),
+	INSERT_INTO_PACKAGE_PARTICIPATION_DB(
+			"INSERT INTO package_participation VALUES (NULL, ?, ?, ?, ?);"),
 	
 	INSERT_INTO_WEIGHTS_DB(
 			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?)"),

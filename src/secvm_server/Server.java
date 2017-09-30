@@ -27,6 +27,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.annotations.JsonAdapter;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
 public class Server {
@@ -50,6 +56,8 @@ public class Server {
 	}
 	
 	
+	JsonParser jsonParser;
+	
 	// Should the server be stopped?
 	private boolean stop = false;
 	// Is the server currently currently loading the next configurations
@@ -67,12 +75,14 @@ public class Server {
 	private PreparedStatement trainEndTimeUpdateStatement;
 	
 	public Server() {
+		jsonParser = new JsonParser();
+		
 		try {
 			dbConnection = establishDbConnection(DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME);
 			
 			// TODO: maybe make this a bit nicer with a loop and a Map or alike
 			participationPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PARTICIPATION_DB
+					.INSERT_INTO_PACKAGE_PARTICIPATION_DB
 					.createPreparedStatement(dbConnection);
 			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
 			getTrainConfigurationsStatement = SqlQueries
@@ -112,7 +122,10 @@ public class Server {
 //			try {
 //				Socket s = new Socket("127.0.0.1", PORT);
 //				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-//				osw.write("this is a test string");
+//				osw.write("{\n" + 
+//						"  \"e\": [3, 32],\n" + 
+//						"  \"p\": \"fdskl\"\n" + 
+//						"}");
 //				osw.flush();
 ////				System.out.println(s.isConnected());
 //				ArrayList<Integer> l = new ArrayList<>();
@@ -386,10 +399,37 @@ public class Server {
 
 			@Override
 			public void run() {
-			    try (BufferedReader socketIn = new BufferedReader(
+			    try (BufferedReader socketReader = new BufferedReader(
 			    		new InputStreamReader(socket.getInputStream()))) {
-			    	System.out.println(socketIn.readLine());
-				} catch (IOException e) {
+			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();			 
+			    	UserPackage packageReceived;
+			    	PreparedStatement logPackageIntoDB = null;
+			    	
+			    	JsonArray experimentId = dataReceived.getAsJsonArray("e");
+			    	int svmId = experimentId.get(0).getAsInt();
+			    	int iteration = experimentId.get(1).getAsInt();
+			    	String packageRandomId = dataReceived.get("p").getAsString();
+			    	JsonElement svmPredictionJsonElement = dataReceived.get("s");
+			    	// test package
+			    	if (svmPredictionJsonElement != null) {
+			    		// TODO: put into db
+			    		// TODO: update testConfigurations
+			    	} else {
+			    		JsonElement updateValueJsonElement = dataReceived.get("v");
+			    		// train package
+			    		if (updateValueJsonElement != null) {
+				    		// TODO: put into db
+				    		// TODO: update trainConfigurations
+			    		// participation package
+			    		} else {
+			    			packageReceived = new ParticipationPackage(
+			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
+			    			logPackageIntoDB = packageReceived.fillStatement(participationPackageInsertStatement);
+			    		}
+			    	}
+			    	
+			    	packageLoggingExecutor.submit(new DatabaseWriter(logPackageIntoDB));
+				} catch (IOException | SQLException e) {
 					e.printStackTrace();
 				}
 			}
