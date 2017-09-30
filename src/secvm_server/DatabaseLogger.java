@@ -7,17 +7,17 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.BlockingQueue;
 
-public class DatabaseWriter implements Runnable {
-	private final PreparedStatement statement;
+public class DatabaseLogger implements Runnable {
+	private final UserPackage packageToLog;
 	
-	public DatabaseWriter(PreparedStatement statement) {
-        this.statement = statement;
+	public DatabaseLogger(UserPackage packageToLog) {
+        this.packageToLog = packageToLog;
 	}
 
 	@Override
 	public void run() {
 		try {
-			statement.executeUpdate();
+			packageToLog.fillStatement().executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
