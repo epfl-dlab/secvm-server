@@ -13,6 +13,9 @@ public enum SqlQueries {
 	INSERT_INTO_PACKAGE_TRAIN_DB(
 			"INSERT INTO package_train VALUES (NULL, ?, ?, ?, ?, ?, ?)"),
 	
+	INSERT_INTO_PACKAGE_TEST_DB(
+			"INSERT INTO package_test VALUES (NULL, ?, ?, ?, ?, ?, ?)"),
+	
 	INSERT_INTO_WEIGHTS_DB(
 			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?)"),
 	

@@ -87,6 +87,9 @@ public class Server {
 			trainPackageInsertStatement = SqlQueries
 					.INSERT_INTO_PACKAGE_TRAIN_DB
 					.createPreparedStatement(dbConnection);
+			testPackageInsertStatement = SqlQueries
+					.INSERT_INTO_PACKAGE_TEST_DB
+					.createPreparedStatement(dbConnection);
 			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
 			getTrainConfigurationsStatement = SqlQueries
 					.GET_TRAIN_CONFIGURATIONS
@@ -126,10 +129,10 @@ public class Server {
 				Socket s = new Socket("127.0.0.1", PORT);
 				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
 				osw.write("{\n" + 
-						"  \"e\": [1, 2],\n" + 
-						"  \"p\": \"nmbm\",\n" + 
-						"  \"i\": 432432,\n" + 
-						"  \"v\": 1\n" + 
+						"  \"e\": [1, 1],\n" + 
+						"  \"p\": \"jkolk\",\n" + 
+						"  \"l\": 1,\n" + 
+						"  \"s\": 0\n" + 
 						"}");
 				osw.flush();
 //				System.out.println(s.isConnected());
@@ -416,7 +419,12 @@ public class Server {
 			    	JsonElement svmPredictionJsonElement = dataReceived.get("s");
 			    	// test package
 			    	if (svmPredictionJsonElement != null) {
-			    		// TODO: put into db
+		    			int trueGender = dataReceived.get("l").getAsInt();
+		    			int predictedGender = dataReceived.get("s").getAsInt();
+		    			packageReceived = new TestPackage(
+		    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+		    					trueGender, predictedGender);
+		    			packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
 			    		// TODO: update testConfigurations
 			    	} else {
 			    		JsonElement updateValueJsonElement = dataReceived.get("v");
