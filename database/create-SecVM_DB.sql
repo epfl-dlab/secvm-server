@@ -164,7 +164,7 @@ ENGINE = InnoDB;
 -- Table `SecVM_DB`.`package_test`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `SecVM_DB`.`package_test` (
-  `autoincrement_id` BIGINT UNSIGNED NOT NULL,
+  `autoincrement_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
   `package_random_id` TEXT NOT NULL,
