@@ -12,6 +12,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -88,33 +89,33 @@ public class Server {
 	}
 	
 	public void start() {
-		try {
-			// TODO: put everything into this try catch
-			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
-			packageListener.start();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		boolean blubb = true;
-		while (blubb) {
-			try {
-				Socket s = new Socket("127.0.0.1", PORT);
-				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-				osw.write("this is a test string");
-				osw.flush();
-//				System.out.println(s.isConnected());
-				ArrayList<Integer> l = new ArrayList<>();
-				for (int i = 0; i < 10_000_000; ++i) {
-					l.add(i);
-				}
-				l.clear();
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-		}
+//		try {
+//			// TODO: put everything into this try catch
+//			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
+//			packageListener.start();
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
+//		boolean blubb = true;
+//		while (blubb) {
+//			try {
+//				Socket s = new Socket("127.0.0.1", PORT);
+//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+//				osw.write("this is a test string");
+//				osw.flush();
+////				System.out.println(s.isConnected());
+//				ArrayList<Integer> l = new ArrayList<>();
+//				for (int i = 0; i < 10_000_000; ++i) {
+//					l.add(i);
+//				}
+//				l.clear();
+//			} catch (UnknownHostException e) {
+//				e.printStackTrace();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//			
+//		}
 		
 		while (!stop) {
 			try {
@@ -286,8 +287,9 @@ public class Server {
 					// TODO: add training_end_time to previous weight_vector entry
 					weightsInsertStatement.setInt(1, latestConfiguration.getSvmId());
 					weightsInsertStatement.setInt(2, iteration);
-					weightsInsertStatement.setInt(3, 0);
-					weightsInsertStatement.setString(4, currWeightsBase64);
+					weightsInsertStatement.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+					weightsInsertStatement.setInt(4, 0);
+					weightsInsertStatement.setString(5, currWeightsBase64);
 					weightsInsertStatement.executeUpdate();
 				}
 				
