@@ -402,8 +402,7 @@ public class Server {
 			    try (BufferedReader socketReader = new BufferedReader(
 			    		new InputStreamReader(socket.getInputStream()))) {
 			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();			 
-			    	UserPackage packageReceived;
-			    	PreparedStatement logPackageIntoDB = null;
+			    	UserPackage packageReceived = null;
 			    	
 			    	JsonArray experimentId = dataReceived.getAsJsonArray("e");
 			    	int svmId = experimentId.get(0).getAsInt();
@@ -424,12 +423,12 @@ public class Server {
 			    		} else {
 			    			packageReceived = new ParticipationPackage(
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
-			    			logPackageIntoDB = packageReceived.fillStatement(participationPackageInsertStatement);
+			    			packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
 			    		}
 			    	}
 			    	
-			    	packageLoggingExecutor.submit(new DatabaseWriter(logPackageIntoDB));
-				} catch (IOException | SQLException e) {
+			    	packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
+				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}

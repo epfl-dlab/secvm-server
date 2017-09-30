@@ -14,6 +14,7 @@ public abstract class UserPackage {
 	protected int iteration;
 	protected String packageRandomId;
 	protected Timestamp arrivalTime;
+	protected PreparedStatement associatedDbStatement;
 	
 	public UserPackage(int svmId, int iteration, String packageRandomId, Timestamp arrivalTime) {
 		this.svmId = svmId;
@@ -34,5 +35,17 @@ public abstract class UserPackage {
 		statement.setString(3, packageRandomId);
 		statement.setTimestamp(4, arrivalTime);
 		return statement;
+	}
+	
+	public PreparedStatement fillStatement() throws SQLException {
+		return this.fillStatement(this.associatedDbStatement);
+	}
+
+	public PreparedStatement getAssociatedDbStatement() {
+		return associatedDbStatement;
+	}
+
+	public void setAssociatedDbStatement(PreparedStatement associatedDbStatement) {
+		this.associatedDbStatement = associatedDbStatement;
 	}
 }
