@@ -78,7 +78,7 @@ COMMENT = 'weights: Base64 encoded';
 -- Table `SecVM_DB`.`package_participation`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `SecVM_DB`.`package_participation` (
-  `autoincrement_id` BIGINT UNSIGNED NOT NULL,
+  `autoincrement_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
   `package_random_id` TEXT NOT NULL,
