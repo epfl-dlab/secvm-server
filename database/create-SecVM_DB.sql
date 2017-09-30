@@ -59,8 +59,8 @@ COMMENT = 'svm_id: AUTOINCREMENT\ntrain_outcomes_dice_roll, test_outcomes_dice_r
 CREATE TABLE IF NOT EXISTS `SecVM_DB`.`weight_vector` (
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
-  `training_start_time` TIMESTAMP(6) NOT NULL,
-  `training_end_time` TIMESTAMP(6) NULL,
+  `training_start_time` TIMESTAMP(3) NOT NULL,
+  `training_end_time` TIMESTAMP(3) NULL,
   `num_participants` INT UNSIGNED NOT NULL,
   `weights` TEXT NOT NULL,
   PRIMARY KEY (`svm_id`, `iteration`),
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `SecVM_DB`.`package_participation` (
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
   `package_random_id` TEXT NOT NULL,
-  `timestamp` TIMESTAMP(6) NOT NULL,
+  `timestamp` TIMESTAMP(3) NOT NULL,
   PRIMARY KEY (`autoincrement_id`),
   CONSTRAINT `fk_package_participation_weight_vector1`
     FOREIGN KEY (`svm_id` , `iteration`)
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS `SecVM_DB`.`package_train` (
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
   `package_random_id` TEXT NOT NULL,
-  `timestamp` TIMESTAMP(6) NOT NULL,
+  `timestamp` TIMESTAMP(3) NOT NULL,
   `index` INT NOT NULL,
   `value` TINYINT(1) NOT NULL,
   PRIMARY KEY (`autoincrement_id`),
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS `SecVM_DB`.`package_test` (
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
   `package_random_id` TEXT NOT NULL,
-  `timestamp` TIMESTAMP(6) NOT NULL,
+  `timestamp` TIMESTAMP(3) NOT NULL,
   `true_gender` TINYINT(1) NOT NULL,
   `predicted_gender` TINYINT(1) NOT NULL,
   PRIMARY KEY (`autoincrement_id`),
