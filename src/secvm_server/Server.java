@@ -63,6 +63,7 @@ public class Server {
 	private PreparedStatement getTrainConfigurationsStatement;
 	private PreparedStatement getTestConfigurationsStatement;
 	private PreparedStatement weightsInsertStatement;
+	private PreparedStatement weightsUpdateStatement;
 	
 	public Server() {
 		try {
@@ -81,6 +82,10 @@ public class Server {
 			
 			weightsInsertStatement = SqlQueries
 					.INSERT_INTO_WEIGHTS_DB
+					.createPreparedStatement(dbConnection);
+			
+			weightsUpdateStatement = SqlQueries
+					.UPDATE_WEIGHTS
 					.createPreparedStatement(dbConnection);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -279,8 +284,10 @@ public class Server {
 						// wrapped in constructor to make it mutable
 						currWeights = new ArrayList<>(Collections.nCopies(numBins, new Float(0)));
 						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
-						// TODO: update cell "weights" of weight_vector entry with the zero vector
-						// of length numBins, i.e. currWeights
+						weightsUpdateStatement.setString(1, currWeightsBase64);
+						weightsUpdateStatement.setInt(2, svmId);
+						weightsUpdateStatement.setInt(3, iteration);
+						weightsUpdateStatement.executeUpdate();
 					}
 					
 					++iteration;
