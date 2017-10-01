@@ -25,6 +25,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.google.gson.Gson;
@@ -63,6 +64,9 @@ public class Server {
 	// Is the server currently currently loading the next configurations
 	// from the db or updating the corresponding files?
 	private boolean loadingOrUpdatingConfigurations = false;
+	Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations;
+	Map<ServerRequestId, TestWeightsConfiguration> testConfigurations;
+	
 	// TODO: close these in the end if not null
 	private Connection dbConnection;
 	private PreparedStatement participationPackageInsertStatement;
@@ -72,6 +76,7 @@ public class Server {
 	private PreparedStatement getTestConfigurationsStatement;
 	private PreparedStatement weightsInsertStatement;
 	private PreparedStatement weightsUpdateStatement;
+	private PreparedStatement gradientUpdateStatement;
 	private PreparedStatement trainEndTimeUpdateStatement;
 	
 	public Server() {
@@ -104,6 +109,10 @@ public class Server {
 			
 			weightsUpdateStatement = SqlQueries
 					.UPDATE_WEIGHTS
+					.createPreparedStatement(dbConnection);
+			
+			gradientUpdateStatement = SqlQueries
+					.UPDATE_GRADIENT
 					.createPreparedStatement(dbConnection);
 			
 			trainEndTimeUpdateStatement = SqlQueries
@@ -154,8 +163,8 @@ public class Server {
 				loadingOrUpdatingConfigurations = true;
 				// ***** Always call them in this order since loadTestConfigurations depends on the changes
 				// loadTrainConfigurations makes to the db. *****
-				Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations = loadTrainConfigurations();
-				Map<ServerRequestId, TestWeightsConfiguration> testConfigurations = loadTestConfigurations();
+				trainConfigurations = loadTrainConfigurations();
+				testConfigurations = loadTestConfigurations();
 				// TODO: Override configuration file and weight files.
 				loadingOrUpdatingConfigurations = false;
 				// TODO: remove this
@@ -292,6 +301,15 @@ public class Server {
 				int numBins = allTrainConfigurations.getInt("svm.num_bins");
 				String currWeightsBase64 = allTrainConfigurations.getString("weight_vector.weights");
 				List<Float> currWeights = DataUtils.base64ToNumberList(currWeightsBase64);
+				String currGradientNotNormalizedBase64 = allTrainConfigurations.getString("weight_vector.gradient_not_normalized");
+				AtomicIntegerArray currGradientNotNormalized = null;
+				// can only be null if we are at the initial weight vector, i.e. iteration == 0
+				if (currGradientNotNormalizedBase64 != null) {
+					currGradientNotNormalized = DataUtils.base64ToAtomicIntegerArray(
+							currGradientNotNormalizedBase64);
+				}
+				
+				// TODO: Extend the testConfigurations SQL query and TestWeightsConfiguration to include all the data necessary for updates.
 				
 				int minNumberTrainParticipants = allTrainConfigurations.getInt("svm.min_number_train_participants");
 				int numParticipants = allTrainConfigurations.getInt("weight_vector.num_participants");
@@ -311,16 +329,34 @@ public class Server {
 						// wrapped in constructor to make it mutable
 						currWeights = new ArrayList<>(Collections.nCopies(numBins, new Float(0)));
 						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
-						weightsUpdateStatement.setString(1, currWeightsBase64);
-						weightsUpdateStatement.setInt(2, svmId);
-						weightsUpdateStatement.setInt(3, iteration);
-						weightsUpdateStatement.executeUpdate();
+					// we need to apply the subgradient update to the weight vector
+					// which isn't necessary in the case of the initial weight vector
+					} else {
+						DataUtils.applySubgradientUpdate(currWeights, iteration, lambda, currGradientNotNormalized, numParticipants);
+						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
 					}
+					
+					currGradientNotNormalized = new AtomicIntegerArray(numBins);
+					currGradientNotNormalizedBase64 = DataUtils.atomicIntegerArrayToBase64(currGradientNotNormalized);
+					
+					
+					// *** update the last iteration ***
+					weightsUpdateStatement.setString(1, currWeightsBase64);
+					weightsUpdateStatement.setInt(2, svmId);
+					weightsUpdateStatement.setInt(3, iteration);
+					weightsUpdateStatement.executeUpdate();
+					
+					// we don't need the old subgradient anymore
+					gradientUpdateStatement.setString(1, null);
+					gradientUpdateStatement.setInt(2, svmId);
+					gradientUpdateStatement.setInt(3, iteration);
+					gradientUpdateStatement.executeUpdate();
 					
 					trainEndTimeUpdateStatement.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
 					trainEndTimeUpdateStatement.setInt(2, svmId);
 					trainEndTimeUpdateStatement.setInt(3, iteration);
 					trainEndTimeUpdateStatement.executeUpdate();
+					// *********************************
 					
 					++iteration;
 					
@@ -329,11 +365,12 @@ public class Server {
 					weightsInsertStatement.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
 					weightsInsertStatement.setInt(4, 0);
 					weightsInsertStatement.setString(5, currWeightsBase64);
+					weightsInsertStatement.setString(6, currGradientNotNormalizedBase64);
 					weightsInsertStatement.executeUpdate();
 				}
 				
 				latestConfiguration.setIteration(iteration);
-				latestConfiguration.setGradientNotNormalized(new AtomicReferenceArray<>(numBins));
+				latestConfiguration.setGradientNotNormalized(currGradientNotNormalized);
 				latestConfiguration.setWeightsToUseForTraining(currWeights);
 				
 				trainConfigurations.put(
@@ -412,9 +449,10 @@ public class Server {
 			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();			 
 			    	UserPackage packageReceived = null;
 			    	
-			    	JsonArray experimentId = dataReceived.getAsJsonArray("e");
-			    	int svmId = experimentId.get(0).getAsInt();
-			    	int iteration = experimentId.get(1).getAsInt();
+			    	JsonArray requestIdArray = dataReceived.getAsJsonArray("e");
+			    	int svmId = requestIdArray.get(0).getAsInt();
+			    	int iteration = requestIdArray.get(1).getAsInt();
+			    	
 			    	String packageRandomId = dataReceived.get("p").getAsString();
 			    	JsonElement predictedGenderJsonElement = dataReceived.get("s");
 			    	// test package
@@ -442,6 +480,7 @@ public class Server {
 			    			packageReceived = new ParticipationPackage(
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
 			    			packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
+			    			// TODO: update trainConfigurations
 			    		}
 			    	}
 			    	

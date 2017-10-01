@@ -17,10 +17,13 @@ public enum SqlQueries {
 			"INSERT INTO package_test VALUES (NULL, ?, ?, ?, ?, ?, ?)"),
 	
 	INSERT_INTO_WEIGHTS_DB(
-			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?)"),
+			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?, ?)"),
 	
 	UPDATE_WEIGHTS(
 			"UPDATE weight_vector SET weights = ? WHERE svm_id = ? AND iteration = ?"),
+	
+	UPDATE_GRADIENT(
+			"UPDATE weight_vector SET gradient_not_normalized = ? WHERE svm_id = ? AND iteration = ?"),
 	
 	UPDATE_TRAIN_END_TIME(
 			"UPDATE weight_vector SET training_end_time = ? WHERE svm_id = ? AND iteration = ?"),
@@ -29,7 +32,8 @@ public enum SqlQueries {
 			"SELECT svm.svm_id, svm.min_number_train_participants, weight_vector.num_participants," + 
 			"	svm.lambda, svm.num_bins, dice_roll.probabilities, svm.train_outcomes_dice_roll," +
 			"	feature_vector.feature_type, feature_vector.num_features," + 
-			"	feature_vector.num_hashes, weight_vector.weights, weight_vector.iteration\n" + 
+			"	feature_vector.num_hashes, weight_vector.weights, weight_vector.iteration," +
+			"	weight_vector.gradient_not_normalized\n" +
 			"FROM svm, weight_vector, svm_uses_feature_vector, feature_vector, dice_roll\n" + 
 			"WHERE svm.train_enabled = 1 AND svm.svm_id = weight_vector.svm_id" +
 			"	AND svm.svm_id = svm_uses_feature_vector.svm_id" +
