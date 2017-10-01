@@ -1,6 +1,7 @@
 package secvm_server;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class TrainWeightsConfiguration extends WeightsConfiguration {
@@ -13,7 +14,7 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	private List<Float> weightsToUseForTraining;
 	// the gradient that is being updated by the users; not yet divided by the number of users 
 	// AtomicReferenceArray instead of regular array for concurrent updates
-	private AtomicReferenceArray<Integer> gradientNotNormalized;
+	private AtomicIntegerArray gradientNotNormalized;
 	// the number of vectors of which gradientNotNormalized is the sum, i.e. the number of users
 	// that participated in the current update round
 	private int numGradientUpdateVectors;
@@ -24,7 +25,7 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	
 	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
 			int minNumberTrainParticipants, int numParticipants, float lambda, List<Integer> trainOutcomesDiceRoll,
-			List<Float> weightsToUseForTraining, AtomicReferenceArray<Integer> gradientNotNormalized,
+			List<Float> weightsToUseForTraining, AtomicIntegerArray gradientNotNormalized,
 			int numGradientUpdateVectors) {
 		super(svmId, iteration, numBins, diceRollProbabilities, features);
 		this.minNumberTrainParticipants = minNumberTrainParticipants;
@@ -76,11 +77,11 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		this.weightsToUseForTraining = weightsToUseForTraining;
 	}
 
-	public AtomicReferenceArray<Integer> getGradientNotNormalized() {
+	public AtomicIntegerArray getGradientNotNormalized() {
 		return gradientNotNormalized;
 	}
 
-	public void setGradientNotNormalized(AtomicReferenceArray<Integer> gradientNotNormalized) {
+	public void setGradientNotNormalized(AtomicIntegerArray gradientNotNormalized) {
 		this.gradientNotNormalized = gradientNotNormalized;
 	}
 
@@ -100,4 +101,13 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	public void setGradientNotNormalizedByIndex(int index, Integer value) {
 		this.gradientNotNormalized.set(index, value);
 	}
+	
+	public void incrementGradientNotNormalizedByIndex(int index) {
+		this.gradientNotNormalized.getAndIncrement(index);
+	}
+	
+	public void decrementGradientNotNormalizedByIndex(int index) {
+		this.gradientNotNormalized.getAndDecrement(index);
+	}
+	
 }
