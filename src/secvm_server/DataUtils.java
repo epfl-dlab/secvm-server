@@ -23,12 +23,22 @@ public final class DataUtils {
 		}
 	}
 	
-	public static <T extends Number> String numberListToBase64(List<T> list) {
+	public static String integerListToBase64(List<Integer> list) {
 		// TODO: implementation
 		return "";
 	}
 	
-	public static <T extends Number> List<T> base64ToNumberList(String string) {
+	public static String floatListToBase64(List<Float> list) {
+		// TODO: implementation
+		return "";
+	}
+	
+	public static List<Integer> base64ToIntegerList(String string) {
+		// TODO: implementation
+		return new ArrayList<>();
+	}
+	
+	public static List<Float> base64ToFloatList(String string) {
 		// TODO: implementation
 		return new ArrayList<>();
 	}

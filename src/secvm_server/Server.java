@@ -227,7 +227,7 @@ public class Server {
 					continue;
 				// the weight vector needs to be taken into the average
 				} else {
-					List<Float> currWeights = DataUtils.base64ToNumberList(
+					List<Float> currWeights = DataUtils.base64ToFloatList(
 							allTestConfigurations.getString("weight_vector.weights"));
 					List<Float> summedWeights = latestConfiguration.getWeightsToUseForTesting();
 					DataUtils.addToFirstVector(summedWeights, currWeights);
@@ -241,11 +241,11 @@ public class Server {
 			} else {
 				latestConfiguration = new TestWeightsConfiguration();
 				
-				List<Float> diceRollProbabilities = DataUtils.base64ToNumberList(
+				List<Float> diceRollProbabilities = DataUtils.base64ToFloatList(
 						allTestConfigurations.getString("dice_roll.probabilities"));
-				List<Integer> testOutcomes = DataUtils.base64ToNumberList(
+				List<Integer> testOutcomes = DataUtils.base64ToIntegerList(
 						allTestConfigurations.getString("svm.test_outcomes_dice_roll"));
-				List<Float> currWeights = DataUtils.base64ToNumberList(
+				List<Float> currWeights = DataUtils.base64ToFloatList(
 						allTestConfigurations.getString("weight_vector.weights"));
 				
 				latestConfiguration.setSvmId(svmId);
@@ -294,13 +294,13 @@ public class Server {
 				latestConfiguration = new TrainWeightsConfiguration();
 				
 				float lambda = allTrainConfigurations.getFloat("svm.lambda");
-				List<Float> diceRollProbabilities = DataUtils.base64ToNumberList(
+				List<Float> diceRollProbabilities = DataUtils.base64ToFloatList(
 						allTrainConfigurations.getString("dice_roll.probabilities"));
-				List<Integer> trainOutcomes = DataUtils.base64ToNumberList(
+				List<Integer> trainOutcomes = DataUtils.base64ToIntegerList(
 						allTrainConfigurations.getString("svm.train_outcomes_dice_roll"));
 				int numBins = allTrainConfigurations.getInt("svm.num_bins");
 				String currWeightsBase64 = allTrainConfigurations.getString("weight_vector.weights");
-				List<Float> currWeights = DataUtils.base64ToNumberList(currWeightsBase64);
+				List<Float> currWeights = DataUtils.base64ToFloatList(currWeightsBase64);
 				String currGradientNotNormalizedBase64 = allTrainConfigurations.getString("weight_vector.gradient_not_normalized");
 				AtomicIntegerArray currGradientNotNormalized = null;
 				// can only be null if we are at the initial weight vector, i.e. iteration == 0
@@ -328,12 +328,12 @@ public class Server {
 					if (iteration == 0) {
 						// wrapped in constructor to make it mutable
 						currWeights = new ArrayList<>(Collections.nCopies(numBins, new Float(0)));
-						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
+						currWeightsBase64 = DataUtils.floatListToBase64(currWeights);
 					// we need to apply the subgradient update to the weight vector
 					// which isn't necessary in the case of the initial weight vector
 					} else {
 						DataUtils.applySubgradientUpdate(currWeights, iteration, lambda, currGradientNotNormalized, numParticipants);
-						currWeightsBase64 = DataUtils.numberListToBase64(currWeights);
+						currWeightsBase64 = DataUtils.floatListToBase64(currWeights);
 					}
 					
 					currGradientNotNormalized = new AtomicIntegerArray(numBins);
