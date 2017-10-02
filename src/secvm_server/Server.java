@@ -54,6 +54,15 @@ public class Server {
 	public static void main(String[] args) {
 		Server server = new Server();
 		server.start();
+//		List<Float> array = new ArrayList<>();
+//		array.add(2f);
+//		array.add(8.56f);
+//		array.add(123f);
+//		array.add(2.879865f);
+//		String encoded = DataUtils.floatListToBase64(array);
+//		System.out.println(array);
+//		System.out.println(encoded);
+//		System.out.println(DataUtils.base64ToFloatList(encoded));
 	}
 	
 	
@@ -125,38 +134,38 @@ public class Server {
 	}
 	
 	public void start() {
-		try {
-			// TODO: put everything into this try catch
-			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
-			packageListener.start();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		boolean blubb = true;
-		while (blubb) {
-			try {
-				Socket s = new Socket("127.0.0.1", PORT);
-				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-				osw.write("{\n" + 
-						"  \"e\": [1, 1],\n" + 
-						"  \"p\": \"jkolk\",\n" + 
-						"  \"l\": 1,\n" + 
-						"  \"s\": 0\n" + 
-						"}");
-				osw.flush();
-//				System.out.println(s.isConnected());
-				ArrayList<Integer> l = new ArrayList<>();
-				for (int i = 0; i < 10_000_000; ++i) {
-					l.add(i);
-				}
-				l.clear();
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-		}
+//		try {
+//			// TODO: put everything into this try catch
+//			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
+//			packageListener.start();
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
+//		boolean blubb = true;
+//		while (blubb) {
+//			try {
+//				Socket s = new Socket("127.0.0.1", PORT);
+//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+//				osw.write("{\n" + 
+//						"  \"e\": [1, 1],\n" + 
+//						"  \"p\": \"jkolk\",\n" + 
+//						"  \"l\": 1,\n" + 
+//						"  \"s\": 0\n" + 
+//						"}");
+//				osw.flush();
+////				System.out.println(s.isConnected());
+//				ArrayList<Integer> l = new ArrayList<>();
+//				for (int i = 0; i < 10_000_000; ++i) {
+//					l.add(i);
+//				}
+//				l.clear();
+//			} catch (UnknownHostException e) {
+//				e.printStackTrace();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//			
+//		}
 		
 		while (!stop) {
 			try {
@@ -210,6 +219,9 @@ public class Server {
 		latestConfiguration.setSvmId(-1);
 		latestConfiguration.setIteration(-1);
 		
+		// the iteration number of the last weight vector we've seen
+		int lastSeenIteration = -1;
+		
 		while (allTestConfigurations.next()) {
 			int svmId = allTestConfigurations.getInt("svm.svm_id");
 			int iteration = allTestConfigurations.getInt("weight_vector.iteration");
@@ -219,11 +231,18 @@ public class Server {
 					allTestConfigurations.getInt("feature_vector.num_hashes"));
 			
 			if (svmId == latestConfiguration.getSvmId()) {
-				// we have a duplicate which means another new type of feature is added
+				// We have a duplicate which means another new type of feature is added.
 				if (iteration == latestConfiguration.getIteration()) {
 					latestConfiguration.addFeatures(features);
-				// we have already summed up enough weight vectors
-				} else if (latestConfiguration.getIteration() - iteration >= NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING){
+				} else if (iteration == lastSeenIteration) {
+					continue;
+				} else if (
+						// We have already summed up enough weight vectors.
+						latestConfiguration.getIteration() - iteration >= NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING ||
+						// We have a duplicate as above but not of the weight vector with the highest iteration number.
+						// This means that we have already added this type of feature (when we took the branch above)
+						// and don't need to do anything else.
+						iteration == lastSeenIteration) {
 					continue;
 				// the weight vector needs to be taken into the average
 				} else {
@@ -236,6 +255,8 @@ public class Server {
 					if (latestConfiguration.getIteration() - iteration + 1 == NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING) {
 						DataUtils.divideVector(summedWeights, NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING);
 					}
+					
+					lastSeenIteration = iteration;
 				}
 			// the first time we encounter this svm instance
 			} else {
@@ -259,6 +280,8 @@ public class Server {
 				testConfigurations.put(
 						new ServerRequestId(latestConfiguration.getSvmId(), latestConfiguration.getIteration()),
 						latestConfiguration);
+				
+				lastSeenIteration = -1;
 			}
 		}
 		
@@ -308,8 +331,6 @@ public class Server {
 					currGradientNotNormalized = DataUtils.base64ToAtomicIntegerArray(
 							currGradientNotNormalizedBase64);
 				}
-				
-				// TODO: Extend the testConfigurations SQL query and TestWeightsConfiguration to include all the data necessary for updates.
 				
 				int minNumberTrainParticipants = allTrainConfigurations.getInt("svm.min_number_train_participants");
 				int numParticipants = allTrainConfigurations.getInt("weight_vector.num_participants");
