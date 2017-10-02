@@ -1,6 +1,8 @@
 package secvm_server;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
@@ -23,24 +25,43 @@ public final class DataUtils {
 		}
 	}
 	
+	// TODO: The Base64 encoding isn't the same for the client and the server. Fix this.
 	public static String integerListToBase64(List<Integer> list) {
-		// TODO: implementation
-		return "";
-	}
-	
-	public static String floatListToBase64(List<Float> list) {
-		// TODO: implementation
-		return "";
+		ByteBuffer byteBuffer = ByteBuffer.allocate(list.size() * Integer.BYTES);
+		for (int entry : list) {
+			byteBuffer.putInt(entry);
+		}
+		return Base64.getEncoder().encodeToString(byteBuffer.array());
 	}
 	
 	public static List<Integer> base64ToIntegerList(String string) {
-		// TODO: implementation
-		return new ArrayList<>();
+		byte[] intBytes = Base64.getDecoder().decode(string);
+		ByteBuffer intByteBuffer = ByteBuffer.wrap(intBytes);
+		List<Integer> intList = new ArrayList<>(intBytes.length / Integer.BYTES);
+		
+		while (intByteBuffer.hasRemaining()) {
+			intList.add(intByteBuffer.getInt());
+		}
+		return intList;
+	}
+	
+	public static String floatListToBase64(List<Float> list) {
+		ByteBuffer byteBuffer = ByteBuffer.allocate(list.size() * Integer.BYTES);
+		for (float entry : list) {
+			byteBuffer.putFloat(entry);
+		}
+		return Base64.getEncoder().encodeToString(byteBuffer.array());
 	}
 	
 	public static List<Float> base64ToFloatList(String string) {
-		// TODO: implementation
-		return new ArrayList<>();
+		byte[] floatBytes = Base64.getDecoder().decode(string);
+		ByteBuffer floatByteBuffer = ByteBuffer.wrap(floatBytes);
+		List<Float> floatList = new ArrayList<>(floatBytes.length / Float.BYTES);
+		
+		while (floatByteBuffer.hasRemaining()) {
+			floatList.add(floatByteBuffer.getFloat());
+		}
+		return floatList;
 	}
 	
 	public static String atomicIntegerArrayToBase64(AtomicIntegerArray array) {
