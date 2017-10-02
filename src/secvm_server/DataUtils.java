@@ -65,13 +65,22 @@ public final class DataUtils {
 	}
 	
 	public static String atomicIntegerArrayToBase64(AtomicIntegerArray array) {
-		// TODO: implementation
-		return "";
+		ByteBuffer byteBuffer = ByteBuffer.allocate(array.length() * Integer.BYTES);
+		for (int i = 0; i < array.length(); ++i) {
+			byteBuffer.putInt(array.get(i));
+		}
+		return Base64.getEncoder().encodeToString(byteBuffer.array());
 	}
 	
 	public static AtomicIntegerArray base64ToAtomicIntegerArray(String string) {
-		// TODO: implementation
-		return new AtomicIntegerArray(0);
+		byte[] intBytes = Base64.getDecoder().decode(string);
+		ByteBuffer intByteBuffer = ByteBuffer.wrap(intBytes);
+		AtomicIntegerArray intArray = new AtomicIntegerArray(intBytes.length / Integer.BYTES);
+		
+		for (int i = 0; i < intArray.length(); ++i) {
+			intArray.set(i, intByteBuffer.getInt());
+		}
+		return intArray;
 	}
 	
 	public static void addToFirstVector(List<Float> l1, List<Float> l2) {
