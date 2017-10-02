@@ -21,7 +21,7 @@ public final class DataUtils {
 		for (int i = 0; i < weights.size(); ++i) {
 			weights.set(i,
 					(1 - stepSize * lambda) * weights.get(i) +
-					subgradient.get(i) / (float) numGradientUpdateVectors);
+					stepSize * subgradient.get(i) / numGradientUpdateVectors);
 		}
 	}
 	
