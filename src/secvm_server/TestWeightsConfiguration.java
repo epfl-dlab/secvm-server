@@ -1,20 +1,29 @@
 package secvm_server;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/*
+ * femaleOverall, maleOverall, femaleCorrect, maleCorrect are all atomic and the
+ * getters and setters work atomically on them.
+ */
 public class TestWeightsConfiguration extends WeightsConfiguration {
 	private List<Integer> testOutcomesDiceRoll;
 	
 	// the weight vector that is being sent to the users for testing
 	private List<Float> weightsToUseForTesting;
 	
-	private int femaleOverall;
-	private int maleOverall;
-	private int femaleCorrect;
-	private int maleCorrect;
+	private AtomicInteger femaleOverall;
+	private AtomicInteger maleOverall;
+	private AtomicInteger femaleCorrect;
+	private AtomicInteger maleCorrect;
 
 	public TestWeightsConfiguration() {
 		super();
+		femaleOverall = new AtomicInteger();
+		maleOverall = new AtomicInteger();
+		femaleCorrect = new AtomicInteger();
+		maleCorrect = new AtomicInteger();
 	}
 
 	public TestWeightsConfiguration(List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting,
@@ -22,10 +31,10 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 		super();
 		this.testOutcomesDiceRoll = testOutcomesDiceRoll;
 		this.weightsToUseForTesting = weightsToUseForTesting;
-		this.femaleOverall = femaleOverall;
-		this.maleOverall = maleOverall;
-		this.femaleCorrect = femaleCorrect;
-		this.maleCorrect = maleCorrect;
+		this.femaleOverall = new AtomicInteger(femaleOverall);
+		this.maleOverall = new AtomicInteger(maleOverall);
+		this.femaleCorrect = new AtomicInteger(femaleCorrect);
+		this.maleCorrect = new AtomicInteger(maleCorrect);
 	}
 
 	public List<Integer> getTestOutcomesDiceRoll() {
@@ -45,34 +54,34 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	}
 
 	public int getFemaleOverall() {
-		return femaleOverall;
+		return femaleOverall.get();
 	}
 
 	public void setFemaleOverall(int femaleOverall) {
-		this.femaleOverall = femaleOverall;
+		this.femaleOverall.set(femaleOverall);
 	}
 
 	public int getMaleOverall() {
-		return maleOverall;
+		return maleOverall.get();
 	}
 
 	public void setMaleOverall(int maleOverall) {
-		this.maleOverall = maleOverall;
+		this.maleOverall.set(maleOverall);
 	}
 
 	public int getFemaleCorrect() {
-		return femaleCorrect;
+		return femaleCorrect.get();
 	}
 
 	public void setFemaleCorrect(int femaleCorrect) {
-		this.femaleCorrect = femaleCorrect;
+		this.femaleCorrect.set(femaleCorrect);
 	}
 
 	public int getMaleCorrect() {
-		return maleCorrect;
+		return maleCorrect.get();
 	}
 
 	public void setMaleCorrect(int maleCorrect) {
-		this.maleCorrect = maleCorrect;
+		this.maleCorrect.set(maleCorrect);
 	}
 }
