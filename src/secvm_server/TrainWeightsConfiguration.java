@@ -1,12 +1,17 @@
 package secvm_server;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+
+/*
+ * numParticipants is atomic and the getter and setter work atomically on it.
+ */
 public class TrainWeightsConfiguration extends WeightsConfiguration {
 	private int minNumberTrainParticipants;
-	private int numParticipants;
+	private AtomicInteger numParticipants;
 	private float lambda;
 	private List<Integer> trainOutcomesDiceRoll;
 	
@@ -18,6 +23,7 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	
 	public TrainWeightsConfiguration() {
 		super();
+		numParticipants = new AtomicInteger();
 	}
 	
 	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
@@ -25,7 +31,7 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 			List<Float> weightsToUseForTraining, AtomicIntegerArray gradientNotNormalized) {
 		super(svmId, iteration, numBins, diceRollProbabilities, features);
 		this.minNumberTrainParticipants = minNumberTrainParticipants;
-		this.numParticipants = numParticipants;
+		this.numParticipants = new AtomicInteger(numParticipants);
 		this.lambda = lambda;
 		this.trainOutcomesDiceRoll = trainOutcomesDiceRoll;
 		this.weightsToUseForTraining = weightsToUseForTraining;
@@ -41,11 +47,11 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	}
 
 	public int getNumParticipants() {
-		return numParticipants;
+		return numParticipants.get();
 	}
 
 	public void setNumParticipants(int numParticipants) {
-		this.numParticipants = numParticipants;
+		this.numParticipants.set(numParticipants);
 	}
 
 	public float getLambda() {
