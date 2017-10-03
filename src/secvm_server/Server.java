@@ -70,10 +70,10 @@ public class Server implements Runnable {
 				Socket s = new Socket("127.0.0.1", PORT);
 				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
 				osw.write("{\n" + 
-						"  \"e\": [1, 3],\n" + 
+						"  \"e\": [1, 4],\n" + 
 						"  \"p\": \"jkolk\",\n" + 
-						"  \"l\": 1,\n" + 
-						"  \"s\": 1\n" + 
+						"  \"v\": 1,\n" + 
+						"  \"i\": 1\n" + 
 						"}");
 				osw.flush();
 				//			System.out.println(s.isConnected());
@@ -629,13 +629,29 @@ public class Server implements Runnable {
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 			    					index, value);
 			    			packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
-				    		// TODO: update trainConfigurations
+			    			
+			    			TrainWeightsConfiguration configurationToUpdate =
+			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
+			    			// otherwise the package is outdated
+			    			if (configurationToUpdate != null) {
+			    				if (value == 0) {
+			    					configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
+			    				} else {
+			    					configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+			    				}
+			    			}
 			    		// participation package
 			    		} else {
 			    			packageReceived = new ParticipationPackage(
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
 			    			packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
-			    			// TODO: update trainConfigurations
+			    			
+			    			TrainWeightsConfiguration configurationToUpdate =
+			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
+			    			// otherwise the package is outdated
+			    			if (configurationToUpdate != null) {
+			    				configurationToUpdate.incrementNumParticipants();
+			    			}
 			    		}
 			    	}
 			    	
