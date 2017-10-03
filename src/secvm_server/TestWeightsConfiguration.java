@@ -84,4 +84,21 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	public void setMaleCorrect(int maleCorrect) {
 		this.maleCorrect.set(maleCorrect);
 	}
+	
+	
+	public void incrementFemaleOverall() {
+		femaleOverall.getAndIncrement();
+	}
+	
+	public void incrementMaleOverall() {
+		maleOverall.getAndIncrement();
+	}
+	
+	public void incrementFemaleCorrect() {
+		femaleCorrect.getAndIncrement();
+	}
+	
+	public void incrementMaleCorrect() {
+		maleCorrect.getAndIncrement();
+	}
 }
