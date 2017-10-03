@@ -600,7 +600,25 @@ public class Server implements Runnable {
 		    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 		    					trueGender, predictedGender);
 		    			packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
-			    		// TODO: update testConfigurations
+			    		
+		    			TestWeightsConfiguration configurationToUpdate =
+		    					testConfigurations.get(new ServerRequestId(svmId, iteration));
+		    			// otherwise the package is outdated
+		    			if (configurationToUpdate != null) {
+		    				// male
+		    				if (trueGender == 0) {
+		    					configurationToUpdate.incrementMaleOverall();
+		    					if (predictedGender == 0) {
+		    						configurationToUpdate.incrementMaleCorrect();
+		    					}
+		    				// female
+		    				} else {
+		    					configurationToUpdate.incrementFemaleOverall();
+		    					if (predictedGender == 1) {
+		    						configurationToUpdate.incrementFemaleCorrect();
+		    					}
+		    				}
+		    			}
 			    	} else {
 			    		JsonElement updateValueJsonElement = dataReceived.get("v");
 			    		// train package
