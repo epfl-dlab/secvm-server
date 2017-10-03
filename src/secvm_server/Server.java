@@ -362,9 +362,13 @@ public class Server implements Runnable {
 					testAccuracyInsertStatement.executeUpdate();
 				}
 				
+				alreadyStoredTestResults.close();
+				
 				lastSeenIteration = -1;
 			}
 		}
+		
+		allTestConfigurations.close();
 		
 		return testConfigurations;
 	}
@@ -480,6 +484,8 @@ public class Server implements Runnable {
 						latestConfiguration);
 			}
 		}
+		
+		allTrainConfigurations.close();
 		
 		return trainConfigurations;
 	}
