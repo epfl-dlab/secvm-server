@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -36,7 +37,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.annotations.JsonAdapter;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
-public class Server {
+public class Server implements Runnable {
 	
 	public static final String DB_USER = "java";
 	public static final String DB_PASSWORD = "java";
@@ -49,11 +50,59 @@ public class Server {
 	
 	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 8;
 	
-	// TODO: count experiment_id up in Base64 characters (to make it small)
+	// TODO: maybe make those parameter of main()
+	public static final long MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES = 1000;
+	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
 	
 	public static void main(String[] args) {
 		Server server = new Server();
-		server.start();
+		Thread mainServerThread = new Thread(server);
+		mainServerThread.start();
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+		boolean blubb = true;
+		while (blubb) {
+			try {
+				Socket s = new Socket("127.0.0.1", PORT);
+				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+				osw.write("{\n" + 
+						"  \"e\": [1, 1],\n" + 
+						"  \"p\": \"jkolk\",\n" + 
+						"  \"l\": 1,\n" + 
+						"  \"s\": 0\n" + 
+						"}");
+				osw.flush();
+				//			System.out.println(s.isConnected());
+				s.close();
+				Thread.sleep(1000);
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+		}
+		
+		// TODO: Listen on System.in for shutdown command and then shut down.
+		
+		try {
+			Thread.sleep(2000);
+			server.stop();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		try {
+			mainServerThread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("stopped");
 //		List<Float> array = new ArrayList<>();
 //		array.add(2f);
 //		array.add(8.56f);
@@ -69,7 +118,7 @@ public class Server {
 	JsonParser jsonParser;
 	
 	// Should the server be stopped?
-	private boolean stop = false;
+	private volatile boolean stop = false;
 	// Is the server currently currently loading the next configurations
 	// from the db or updating the corresponding files?
 	private boolean loadingOrUpdatingConfigurations = false;
@@ -87,6 +136,7 @@ public class Server {
 	private PreparedStatement weightsUpdateStatement;
 	private PreparedStatement gradientUpdateStatement;
 	private PreparedStatement trainEndTimeUpdateStatement;
+	
 	
 	public Server() {
 		jsonParser = new JsonParser();
@@ -127,48 +177,28 @@ public class Server {
 			trainEndTimeUpdateStatement = SqlQueries
 					.UPDATE_TRAIN_END_TIME
 					.createPreparedStatement(dbConnection);
+			
+			
 		} catch (SQLException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 	}
 	
-	public void start() {
-//		try {
-//			// TODO: put everything into this try catch
-//			Thread packageListener = new Thread(new PackageListener(PORT, NUM_THREADS_PROCESSING_INCOMING_PACKAGES));
-//			packageListener.start();
-//		} catch (IOException e1) {
-//			e1.printStackTrace();
-//		}
-//		boolean blubb = true;
-//		while (blubb) {
-//			try {
-//				Socket s = new Socket("127.0.0.1", PORT);
-//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-//				osw.write("{\n" + 
-//						"  \"e\": [1, 1],\n" + 
-//						"  \"p\": \"jkolk\",\n" + 
-//						"  \"l\": 1,\n" + 
-//						"  \"s\": 0\n" + 
-//						"}");
-//				osw.flush();
-////				System.out.println(s.isConnected());
-//				ArrayList<Integer> l = new ArrayList<>();
-//				for (int i = 0; i < 10_000_000; ++i) {
-//					l.add(i);
-//				}
-//				l.clear();
-//			} catch (UnknownHostException e) {
-//				e.printStackTrace();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
-//			
-//		}
-		
-		while (!stop) {
-			try {
+	@Override
+	public void run() {		
+		PackageListener packageListener = null;
+		Thread packageListenerThread = null;
+		// We need to hold a reference to the ServerSocket in this thread for being able to close it
+		// which is the only way of letting the PackageListener thread break out of ServerSocket#accept().
+		ServerSocket serverSocket = null;
+		try {
+			serverSocket = new ServerSocket(PORT);
+			packageListener = new PackageListener(serverSocket, NUM_THREADS_PROCESSING_INCOMING_PACKAGES);
+			packageListenerThread = new Thread(packageListener);
+			packageListenerThread.start();
+			
+			while (!stop) {
 				loadingOrUpdatingConfigurations = true;
 				// ***** Always call them in this order since loadTestConfigurations depends on the changes
 				// loadTrainConfigurations makes to the db. *****
@@ -176,33 +206,51 @@ public class Server {
 				testConfigurations = loadTestConfigurations();
 				// TODO: Override configuration file and weight files.
 				loadingOrUpdatingConfigurations = false;
-				// TODO: remove this
-				stop = true;
-			} catch (SQLException e) {
-				e.printStackTrace();
+				
+				long deadline = System.currentTimeMillis() +
+						MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
+
+				// In case of stop == true we don't immediately break the outer loop but instead
+				// still write the results obtained so far to the database.
+				while (System.currentTimeMillis() < deadline && !stop) {
+					// TODO: update configuration file
+					Thread.sleep(1000);
+				}
+				
+				Thread.sleep(MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE);
+				
+				// TODO: update database entries
 			}
+		} catch (IOException | SQLException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 		
-//		packageLoggingExecutor.shutdown();
-//		// wait until the logging is finished
-//		while (true) {
-//			try {
-//				if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-//					break;
-//				}
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//		}
+		// TODO: update configuration file to "{}"
 		
-		// only then close the db connection
 		try {
-			participationPackageInsertStatement.close();
-			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
+			if (packageListener != null) {
+				packageListener.stop();
+			}
+			if (serverSocket != null) {
+				try {
+					serverSocket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (packageListenerThread != null) {
+				try {
+					packageListenerThread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 			dbConnection.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-		}
+		}	
 	}
 	
 	public void stop() {
@@ -414,14 +462,18 @@ public class Server {
 		return dataSource.getConnection();
 	}
 	
+	// TODO: maybe put this into its own file
 	class PackageListener implements Runnable {
 		
 		private ServerSocket serverSocket;
 		private ExecutorService incomingPackageExecutor;
 		private ExecutorService packageLoggingExecutor;
+		
+		// Should the listener be stopped?
+		private volatile boolean stop = false;
 
-		public PackageListener(int port, int numThreadsPackageProcessing) throws IOException {
-			this.serverSocket = new ServerSocket(port);
+		public PackageListener(ServerSocket serverSocket, int numThreadsPackageProcessing) throws IOException {
+			this.serverSocket = serverSocket;
 			this.incomingPackageExecutor = Executors.newFixedThreadPool(numThreadsPackageProcessing);
 			this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
 		}
@@ -434,6 +486,8 @@ public class Server {
 					// and otherwise log this event in 'catch (SecurityException e)' 
 					Socket socket = serverSocket.accept();
 					incomingPackageExecutor.submit(new PackageHandler(socket));
+				} catch (SocketException e) {
+					break;
 				} catch (SecurityException e) {
 					e.printStackTrace();
 				} catch (IOException e) {
@@ -441,18 +495,41 @@ public class Server {
 				}
 			}
 			
-			// TODO: Do something like this:
-//			packageLoggingExecutor.shutdown();
-//			// wait until the logging is finished
-//			while (true) {
-//				try {
-//					if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-//						break;
-//					}
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-//			}
+			incomingPackageExecutor.shutdown();
+			while (true) {
+				try {
+					if (incomingPackageExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+						break;
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					break;
+				}
+			}
+			
+			// packageLoggingExecutor can only be shut down after the termination of incomingPackageExecutor
+			// because the latter uses the former one.
+			packageLoggingExecutor.shutdown();
+			while (true) {
+				try {
+					if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+						break;
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					break;
+				}
+			}
+
+			try {
+				serverSocket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		public void stop() {
+			stop = true;
 		}
 		
 		class PackageHandler implements Runnable {
@@ -467,7 +544,7 @@ public class Server {
 			public void run() {
 			    try (BufferedReader socketReader = new BufferedReader(
 			    		new InputStreamReader(socket.getInputStream()))) {
-			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();			 
+			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();
 			    	UserPackage packageReceived = null;
 			    	
 			    	JsonArray requestIdArray = dataReceived.getAsJsonArray("e");
