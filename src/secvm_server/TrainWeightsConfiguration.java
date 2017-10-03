@@ -103,4 +103,9 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		this.gradientNotNormalized.getAndDecrement(index);
 	}
 	
+	
+	public void incrementNumParticipants() {
+		numParticipants.getAndIncrement();
+	}
+	
 }
