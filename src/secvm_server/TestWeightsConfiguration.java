@@ -7,16 +7,25 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	
 	// the weight vector that is being sent to the users for testing
 	private List<Float> weightsToUseForTesting;
+	
+	private int femaleOverall;
+	private int maleOverall;
+	private int femaleCorrect;
+	private int maleCorrect;
 
 	public TestWeightsConfiguration() {
 		super();
 	}
-	
-	public TestWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities,
-			List<FeatureVectorProperties> features, List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting) {
-		super(svmId, iteration, numBins, diceRollProbabilities, features);
+
+	public TestWeightsConfiguration(List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting,
+			int femaleOverall, int maleOverall, int femaleCorrect, int maleCorrect) {
+		super();
 		this.testOutcomesDiceRoll = testOutcomesDiceRoll;
 		this.weightsToUseForTesting = weightsToUseForTesting;
+		this.femaleOverall = femaleOverall;
+		this.maleOverall = maleOverall;
+		this.femaleCorrect = femaleCorrect;
+		this.maleCorrect = maleCorrect;
 	}
 
 	public List<Integer> getTestOutcomesDiceRoll() {
@@ -33,5 +42,37 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 
 	public void setWeightsToUseForTesting(List<Float> weightsToUseForTesting) {
 		this.weightsToUseForTesting = weightsToUseForTesting;
+	}
+
+	public int getFemaleOverall() {
+		return femaleOverall;
+	}
+
+	public void setFemaleOverall(int femaleOverall) {
+		this.femaleOverall = femaleOverall;
+	}
+
+	public int getMaleOverall() {
+		return maleOverall;
+	}
+
+	public void setMaleOverall(int maleOverall) {
+		this.maleOverall = maleOverall;
+	}
+
+	public int getFemaleCorrect() {
+		return femaleCorrect;
+	}
+
+	public void setFemaleCorrect(int femaleCorrect) {
+		this.femaleCorrect = femaleCorrect;
+	}
+
+	public int getMaleCorrect() {
+		return maleCorrect;
+	}
+
+	public void setMaleCorrect(int maleCorrect) {
+		this.maleCorrect = maleCorrect;
 	}
 }

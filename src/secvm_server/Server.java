@@ -70,10 +70,10 @@ public class Server implements Runnable {
 				Socket s = new Socket("127.0.0.1", PORT);
 				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
 				osw.write("{\n" + 
-						"  \"e\": [1, 1],\n" + 
+						"  \"e\": [1, 3],\n" + 
 						"  \"p\": \"jkolk\",\n" + 
 						"  \"l\": 1,\n" + 
-						"  \"s\": 0\n" + 
+						"  \"s\": 1\n" + 
 						"}");
 				osw.flush();
 				//			System.out.println(s.isConnected());
@@ -132,6 +132,8 @@ public class Server implements Runnable {
 	private PreparedStatement testPackageInsertStatement;
 	private PreparedStatement getTrainConfigurationsStatement;
 	private PreparedStatement getTestConfigurationsStatement;
+	private PreparedStatement getTestAccuracyStatement;
+	private PreparedStatement testAccuracyInsertStatement;
 	private PreparedStatement weightsInsertStatement;
 	private PreparedStatement weightsUpdateStatement;
 	private PreparedStatement gradientUpdateStatement;
@@ -160,6 +162,12 @@ public class Server implements Runnable {
 					.createPreparedStatement(dbConnection);
 			getTestConfigurationsStatement = SqlQueries
 					.GET_TEST_CONFIGURATIONS
+					.createPreparedStatement(dbConnection);
+			getTestAccuracyStatement = SqlQueries
+					.GET_TEST_ACCURACY
+					.createPreparedStatement(dbConnection);
+			testAccuracyInsertStatement = SqlQueries
+					.INSERT_INTO_TEST_ACCURACY_DB
 					.createPreparedStatement(dbConnection);
 			
 			weightsInsertStatement = SqlQueries
@@ -328,6 +336,31 @@ public class Server implements Runnable {
 				testConfigurations.put(
 						new ServerRequestId(latestConfiguration.getSvmId(), latestConfiguration.getIteration()),
 						latestConfiguration);
+				
+				getTestAccuracyStatement.setInt(1, svmId);
+				getTestAccuracyStatement.setInt(2, iteration);
+				ResultSet alreadyStoredTestResults = getTestAccuracyStatement.executeQuery();
+
+				if (alreadyStoredTestResults.next()) {
+					latestConfiguration.setFemaleOverall(alreadyStoredTestResults.getInt(1));
+					latestConfiguration.setMaleOverall(alreadyStoredTestResults.getInt(2));
+					latestConfiguration.setFemaleCorrect(alreadyStoredTestResults.getInt(3));
+					latestConfiguration.setMaleCorrect(alreadyStoredTestResults.getInt(4));
+				// The ResultSet is empty which means that there is no entry for this test configuration
+				// in the db yet. Create a new one.
+				} else {
+					latestConfiguration.setFemaleOverall(0);
+					latestConfiguration.setMaleOverall(0);
+					latestConfiguration.setFemaleCorrect(0);
+					latestConfiguration.setMaleCorrect(0);
+					testAccuracyInsertStatement.setInt(1, svmId);
+					testAccuracyInsertStatement.setInt(2, iteration);
+					testAccuracyInsertStatement.setInt(3, 0);
+					testAccuracyInsertStatement.setInt(4, 0);
+					testAccuracyInsertStatement.setInt(5, 0);
+					testAccuracyInsertStatement.setInt(6, 0);
+					testAccuracyInsertStatement.executeUpdate();
+				}
 				
 				lastSeenIteration = -1;
 			}

@@ -19,6 +19,9 @@ public enum SqlQueries {
 	INSERT_INTO_WEIGHTS_DB(
 			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?, ?)"),
 	
+	INSERT_INTO_TEST_ACCURACY_DB(
+			"INSERT INTO test_accuracy VALUES(?, ?, ?, ?, ?, ?)"),
+	
 	UPDATE_WEIGHTS(
 			"UPDATE weight_vector SET weights = ? WHERE svm_id = ? AND iteration = ?"),
 	
@@ -52,7 +55,12 @@ public enum SqlQueries {
 			"	AND svm.dice_roll_id = dice_roll.id" +
 			"	AND (weight_vector.num_participants >= svm.min_number_train_participants" +
 			"		OR weight_vector.iteration = 0)\n" +
-			"ORDER BY svm.svm_id, weight_vector.iteration DESC");
+			"ORDER BY svm.svm_id, weight_vector.iteration DESC"),
+	
+	GET_TEST_ACCURACY(
+			"SELECT female_overall, male_overall, female_correct, male_correct\n" +
+			"FROM test_accuracy\n" +
+			"WHERE svm_id = ? AND iteration = ?");
 	
 	public final String query;
 	
