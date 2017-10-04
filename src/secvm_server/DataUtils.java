@@ -1,10 +1,17 @@
 package secvm_server;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+
+import secvm_server.json_objects.WeightsForClients;
 
 public final class DataUtils {
 	
@@ -109,6 +116,18 @@ public final class DataUtils {
 			array[i] = l.get(i);
 		}
 		return array;
+	}
+	
+	/**
+	 * Handles the IOException by itself.
+	 */
+	public static void writeStringToFile(String data, String path) {
+		try (Writer writer = new BufferedWriter(new OutputStreamWriter(
+	              new FileOutputStream(path), "utf-8"))) {
+			writer.write(data);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 }
