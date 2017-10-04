@@ -8,7 +8,8 @@ import java.util.List;
  *
  */
 public class WeightsConfiguration {
-	// maybe remove this and only have as key in the Map
+	// TODO: Move weight vector from child classes here.
+	// TODO: Maybe remove this and only have as key in the Map.
 	private int svmId;
 	private int iteration;
 	private int numBins;
