@@ -27,7 +27,8 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	}
 
 	public TestWeightsConfiguration(List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting,
-			int femaleOverall, int maleOverall, int femaleCorrect, int maleCorrect) {
+			int femaleOverall, int maleOverall, int femaleCorrect,
+			int maleCorrect) {
 		super();
 		this.testOutcomesDiceRoll = testOutcomesDiceRoll;
 		this.weightsToUseForTesting = weightsToUseForTesting;

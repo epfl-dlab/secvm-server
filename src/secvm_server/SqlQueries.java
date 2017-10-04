@@ -40,7 +40,7 @@ public enum SqlQueries {
 	
 	GET_TRAIN_CONFIGURATIONS(
 			"SELECT svm.svm_id, svm.min_number_train_participants, weight_vector.num_participants," + 
-			"	svm.lambda, svm.num_bins, dice_roll.probabilities, svm.train_outcomes_dice_roll," +
+			"	svm.lambda, svm.num_bins, dice_roll.probabilities, dice_roll.id, svm.train_outcomes_dice_roll," +
 			"	feature_vector.feature_type, feature_vector.id, feature_vector.num_features," + 
 			"	feature_vector.num_hashes, weight_vector.weights, weight_vector.iteration," +
 			"	weight_vector.gradient_not_normalized\n" +
@@ -52,7 +52,7 @@ public enum SqlQueries {
 			"ORDER BY svm.svm_id, weight_vector.iteration DESC"),
 	
 	GET_TEST_CONFIGURATIONS(
-			"SELECT svm.svm_id, dice_roll.probabilities, svm.test_outcomes_dice_roll," + 
+			"SELECT svm.svm_id, dice_roll.probabilities, dice_roll.id, svm.test_outcomes_dice_roll," + 
 			"	feature_vector.feature_type, feature_vector.id, feature_vector.num_features," + 
 			"	feature_vector.num_hashes, weight_vector.weights, weight_vector.iteration\n" + 
 			"FROM svm, weight_vector, svm_uses_feature_vector, feature_vector, dice_roll\n" + 

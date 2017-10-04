@@ -277,17 +277,26 @@ public class Server implements Runnable {
 //				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
 //					experimentConfiguration.experimentId[experimentIndex] =
 //							new ExperimentConfiguration.ExperimentId(trainConfig.getSvmId(), trainConfig.getIteration());
+//					
 //					ExperimentConfiguration.Features currFeaturesConfigEntry =
 //							new ExperimentConfiguration.Features();
 //					List<FeatureVectorProperties> currFeatureProperties = trainConfig.getFeatures();
 //					for (FeatureVectorProperties properties : currFeatureProperties) {
 //						if (properties.getFeature_type() == "hosts") {
-//							currFeaturesConfigEntry.idHosts = properties.get
+//							currFeaturesConfigEntry.idHosts = String.valueOf(properties.getId());
+//							currFeaturesConfigEntry.numHosts = properties.getNum_features();
+//							currFeaturesConfigEntry.numHashesHosts = properties.getNum_hashes();
+//						} else {
+//							currFeaturesConfigEntry.idTitleWords = String.valueOf(properties.getId());
+//							currFeaturesConfigEntry.numTitleWords = properties.getNum_features();
+//							currFeaturesConfigEntry.numHashesTitleWords = properties.getNum_hashes();
 //						}
 //					}
 //					experimentConfiguration.features[experimentIndex] = currFeaturesConfigEntry;
+//					
+//					experimentConfiguration.diceRolls[experimentIndex] = new ExperimentConfiguration.DiceRolls(id, probs, train, test)
 //				}
-				
+//				
 				loadingOrUpdatingConfigurations = false;
 				
 				
@@ -425,6 +434,7 @@ public class Server implements Runnable {
 						allTestConfigurations.getString("weight_vector.weights"));
 				
 				latestConfiguration.setSvmId(svmId);
+				latestConfiguration.setDiceRollId(allTestConfigurations.getInt("dice_roll.id"));
 				latestConfiguration.setDiceRollProbabilities(diceRollProbabilities);
 				latestConfiguration.setTestOutcomesDiceRoll(testOutcomes);
 				latestConfiguration.addFeatures(features);
@@ -525,6 +535,7 @@ public class Server implements Runnable {
 				latestConfiguration.setSvmId(svmId);
 				latestConfiguration.setLambda(lambda);
 				latestConfiguration.setNumBins(numBins);
+				latestConfiguration.setDiceRollId(allTrainConfigurations.getInt("dice_roll.id"));
 				latestConfiguration.setDiceRollProbabilities(diceRollProbabilities);
 				latestConfiguration.setTrainOutcomesDiceRoll(trainOutcomes);
 				latestConfiguration.addFeatures(features);

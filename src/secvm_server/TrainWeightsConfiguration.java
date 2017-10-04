@@ -26,10 +26,10 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		numParticipants = new AtomicInteger();
 	}
 	
-	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
+	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, int diceRollId, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
 			int minNumberTrainParticipants, int numParticipants, float lambda, List<Integer> trainOutcomesDiceRoll,
 			List<Float> weightsToUseForTraining, AtomicIntegerArray gradientNotNormalized) {
-		super(svmId, iteration, numBins, diceRollProbabilities, features);
+		super(svmId, iteration, numBins, diceRollId, diceRollProbabilities, features);
 		this.minNumberTrainParticipants = minNumberTrainParticipants;
 		this.numParticipants = new AtomicInteger(numParticipants);
 		this.lambda = lambda;
