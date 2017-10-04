@@ -211,7 +211,7 @@ public class Server implements Runnable {
 			packageListenerThread = new Thread(packageListener);
 			packageListenerThread.start();
 			
-			while (!stop) {
+			outer: while (true) {
 				loadingOrUpdatingConfigurations = true;
 				// ***** Always call them in this order since loadTestConfigurations depends on the changes
 				// loadTrainConfigurations makes to the db. *****
@@ -225,7 +225,10 @@ public class Server implements Runnable {
 
 				// In case of stop == true we don't immediately break the outer loop but instead
 				// still write the results obtained so far to the database.
-				while (System.currentTimeMillis() < deadline && !stop) {
+				while (System.currentTimeMillis() < deadline) {
+					if (stop) {
+						break outer;
+					}
 					// TODO: update configuration file
 					Thread.sleep(1000);
 				}
