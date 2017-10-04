@@ -408,6 +408,8 @@ public class Server implements Runnable {
 		latestConfiguration.setSvmId(-1);
 		latestConfiguration.setIteration(-1);
 		
+		Timestamp timestampNow = new Timestamp(System.currentTimeMillis());
+		
 		while (allTrainConfigurations.next()) {
 			int svmId = allTrainConfigurations.getInt("svm.svm_id");
 			int iteration = allTrainConfigurations.getInt("weight_vector.iteration");
@@ -483,7 +485,7 @@ public class Server implements Runnable {
 					gradientUpdateStatement.setInt(3, iteration);
 					gradientUpdateStatement.executeUpdate();
 					
-					trainEndTimeUpdateStatement.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+					trainEndTimeUpdateStatement.setTimestamp(1, timestampNow);
 					trainEndTimeUpdateStatement.setInt(2, svmId);
 					trainEndTimeUpdateStatement.setInt(3, iteration);
 					trainEndTimeUpdateStatement.executeUpdate();
@@ -493,7 +495,7 @@ public class Server implements Runnable {
 					
 					weightsInsertStatement.setInt(1, latestConfiguration.getSvmId());
 					weightsInsertStatement.setInt(2, iteration);
-					weightsInsertStatement.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+					weightsInsertStatement.setTimestamp(3, timestampNow);
 					weightsInsertStatement.setInt(4, 0);
 					weightsInsertStatement.setString(5, currWeightsBase64);
 					weightsInsertStatement.setString(6, currGradientNotNormalizedBase64);
