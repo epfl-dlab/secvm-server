@@ -94,5 +94,21 @@ public final class DataUtils {
 			list.set(i, list.get(i) / divisor);
 		}
 	}
-
+	
+	public static int[] intListToArray(List<Integer> l) {
+		int[] array = new int[l.size()];
+		for (int i = 0; i < array.length; ++i) {
+			array[i] = l.get(i);
+		}
+		return array;
+	}
+	
+	public static float[] floatListToArray(List<Float> l) {
+		float[] array = new float[l.size()];
+		for (int i = 0; i < array.length; ++i) {
+			array[i] = l.get(i);
+		}
+		return array;
+	}
+	
 }
