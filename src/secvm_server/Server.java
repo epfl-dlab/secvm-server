@@ -70,10 +70,10 @@ public class Server implements Runnable {
 				Socket s = new Socket("127.0.0.1", PORT);
 				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
 				osw.write("{\n" + 
-						"  \"e\": [1, 4],\n" + 
+						"  \"e\": [1, 3],\n" + 
 						"  \"p\": \"jkolk\",\n" + 
-						"  \"v\": 1,\n" + 
-						"  \"i\": 1\n" + 
+						"  \"l\": 1,\n" + 
+						"  \"s\": 1\n" + 
 						"}");
 				osw.flush();
 				//			System.out.println(s.isConnected());
@@ -139,6 +139,7 @@ public class Server implements Runnable {
 	private PreparedStatement gradientUpdateStatement;
 	private PreparedStatement trainEndTimeUpdateStatement;
 	private PreparedStatement gradientNumParticipantsUpdateStatement;
+	private PreparedStatement testResultsUpdateStatement;
 	
 	
 	public Server() {
@@ -191,6 +192,10 @@ public class Server implements Runnable {
 					.UPDATE_GRADIENT_NUM_PARTICIPANTS
 					.createPreparedStatement(dbConnection);
 			
+			testResultsUpdateStatement = SqlQueries
+					.UPDATE_TEST_RESULTS
+					.createPreparedStatement(dbConnection);
+			
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -235,6 +240,8 @@ public class Server implements Runnable {
 				
 				Thread.sleep(MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE);
 				
+				
+				// TODO: put into separate functions
 				// The entries are guaranteed to already be in the db because if they aren't
 				// already at the beginning of the iteration, they will be created during
 				// loadTrainConfigurations() andloadTestConfigurations(). 
@@ -242,8 +249,6 @@ public class Server implements Runnable {
 				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
 					gradientNumParticipantsUpdateStatement.setString(1,
 							DataUtils.atomicIntegerArrayToBase64(
-									trainConfig.getGradientNotNormalized()));
-					System.out.println(DataUtils.atomicIntegerArrayToBase64(
 									trainConfig.getGradientNotNormalized()));
 					gradientNumParticipantsUpdateStatement.setInt(2,
 							trainConfig.getNumParticipants());
@@ -254,7 +259,21 @@ public class Server implements Runnable {
 					gradientNumParticipantsUpdateStatement.executeUpdate();
 				}
 				
-				// TODO: the same for testConfigurations
+				for (TestWeightsConfiguration testConfig : testConfigurations.values()) {
+					testResultsUpdateStatement.setInt(1,
+							testConfig.getFemaleOverall());
+					testResultsUpdateStatement.setInt(2,
+							testConfig.getMaleOverall());
+					testResultsUpdateStatement.setInt(3,
+							testConfig.getFemaleCorrect());
+					testResultsUpdateStatement.setInt(4,
+							testConfig.getMaleCorrect());
+					testResultsUpdateStatement.setInt(5,
+							testConfig.getSvmId());
+					testResultsUpdateStatement.setInt(6,
+							testConfig.getIteration());
+					testResultsUpdateStatement.executeUpdate();
+				}
 			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();
