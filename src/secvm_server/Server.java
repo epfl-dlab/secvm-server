@@ -247,32 +247,11 @@ public class Server implements Runnable {
 				// loadTrainConfigurations() andloadTestConfigurations(). 
 				
 				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
-					gradientNumParticipantsUpdateStatement.setString(1,
-							DataUtils.atomicIntegerArrayToBase64(
-									trainConfig.getGradientNotNormalized()));
-					gradientNumParticipantsUpdateStatement.setInt(2,
-							trainConfig.getNumParticipants());
-					gradientNumParticipantsUpdateStatement.setInt(3,
-							trainConfig.getSvmId());
-					gradientNumParticipantsUpdateStatement.setInt(4,
-							trainConfig.getIteration());
-					gradientNumParticipantsUpdateStatement.executeUpdate();
+					updateWeightVectorTableAfterTraining(trainConfig);
 				}
 				
 				for (TestWeightsConfiguration testConfig : testConfigurations.values()) {
-					testResultsUpdateStatement.setInt(1,
-							testConfig.getFemaleOverall());
-					testResultsUpdateStatement.setInt(2,
-							testConfig.getMaleOverall());
-					testResultsUpdateStatement.setInt(3,
-							testConfig.getFemaleCorrect());
-					testResultsUpdateStatement.setInt(4,
-							testConfig.getMaleCorrect());
-					testResultsUpdateStatement.setInt(5,
-							testConfig.getSvmId());
-					testResultsUpdateStatement.setInt(6,
-							testConfig.getIteration());
-					testResultsUpdateStatement.executeUpdate();
+					updateTestAccuracyTableAfterTesting(testConfig);
 				}
 			}
 		} catch (IOException | SQLException e) {
@@ -534,6 +513,35 @@ public class Server implements Runnable {
 		allTrainConfigurations.close();
 		
 		return trainConfigurations;
+	}
+	
+	private void updateWeightVectorTableAfterTraining (TrainWeightsConfiguration trainConfig) throws SQLException {
+		gradientNumParticipantsUpdateStatement.setString(1,
+				DataUtils.atomicIntegerArrayToBase64(
+						trainConfig.getGradientNotNormalized()));
+		gradientNumParticipantsUpdateStatement.setInt(2,
+				trainConfig.getNumParticipants());
+		gradientNumParticipantsUpdateStatement.setInt(3,
+				trainConfig.getSvmId());
+		gradientNumParticipantsUpdateStatement.setInt(4,
+				trainConfig.getIteration());
+		gradientNumParticipantsUpdateStatement.executeUpdate();
+	}
+	
+	private void updateTestAccuracyTableAfterTesting (TestWeightsConfiguration testConfig) throws SQLException {
+		testResultsUpdateStatement.setInt(1,
+				testConfig.getFemaleOverall());
+		testResultsUpdateStatement.setInt(2,
+				testConfig.getMaleOverall());
+		testResultsUpdateStatement.setInt(3,
+				testConfig.getFemaleCorrect());
+		testResultsUpdateStatement.setInt(4,
+				testConfig.getMaleCorrect());
+		testResultsUpdateStatement.setInt(5,
+				testConfig.getSvmId());
+		testResultsUpdateStatement.setInt(6,
+				testConfig.getIteration());
+		testResultsUpdateStatement.executeUpdate();
 	}
 	
 	private Connection establishDbConnection(
