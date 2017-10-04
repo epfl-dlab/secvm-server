@@ -102,11 +102,13 @@ public class WeightsConfiguration {
 
 	public static class FeatureVectorProperties {
 		private String featureType;
+		private int id;
 		private int numFeatures;
 		private int numHashes;
 		
-		public FeatureVectorProperties(String featureType, int numFeatures, int numHashes) {
+		public FeatureVectorProperties(String featureType, int id, int numFeatures, int numHashes) {
 			this.featureType = featureType;
+			this.id = id;
 			this.numFeatures = numFeatures;
 			this.numHashes = numHashes;
 		}
@@ -115,6 +117,10 @@ public class WeightsConfiguration {
 			return featureType;
 		}
 
+		public int getId() {
+			return id;
+		}
+		
 		public int getNum_features() {
 			return numFeatures;
 		}

@@ -1,13 +1,25 @@
 package secvm_server;
 
+import java.beans.FeatureDescriptor;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URI;
 import java.net.UnknownHostException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.nio.file.WatchEvent.Kind;
+import java.nio.file.WatchEvent.Modifier;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -19,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +43,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -37,12 +51,17 @@ import com.google.gson.JsonParser;
 import com.google.gson.annotations.JsonAdapter;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
+import secvm_server.WeightsConfiguration.FeatureVectorProperties;
+
 public class Server implements Runnable {
 	
 	public static final String DB_USER = "java";
 	public static final String DB_PASSWORD = "java";
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
+	
+	public static final String CONFIGURATION_FILE_PATH = "data/configuration.json";
+	public static final String WEIGHTS_FILE_BASE_PATH = "data/weights";
 	
 	public static final int PORT = 8080;
 	
@@ -55,6 +74,24 @@ public class Server implements Runnable {
 	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
 	
 	public static void main(String[] args) {
+//		ExperimentConfiguration ec = new ExperimentConfiguration();
+//		ec.experimentId = new ExperimentConfiguration.ExperimentId[]
+//				{	new ExperimentConfiguration.ExperimentId(1, 7),
+//					new ExperimentConfiguration.ExperimentId(2, 4)
+//				};
+//		ec.features = new ExperimentConfiguration.Features[]
+//				{	new ExperimentConfiguration.Features("hosts_a", 3, 1, "url_a", 7, 2),
+//					new ExperimentConfiguration.Features("url_b", 5, 1, null, 0, 0)
+//				};
+//		ec.featuresToDelete = new String[] {"id1", "id2", "id3", "id4"};
+//		ec.diceRolls = new ExperimentConfiguration.DiceRolls[]
+//				{	new ExperimentConfiguration.DiceRolls("diceRoll_a", new float[] {0.5f, 0.3f, 0.2f}, null, new int[] {0, 2}),
+//					new ExperimentConfiguration.DiceRolls("diceRoll_b", new float[] {1f}, new int[] {0}, null)
+//				};
+//		ec.weightVectorUrl = new String[] {"http://localhost:8000/weights1.json", "http://localhost:8000/weights2.json"};
+//		ec.timeLeft = new int[] {10000, 10000};
+//		System.out.println((new GsonBuilder()).create().toJson(ec));
+		
 		Server server = new Server();
 		Thread mainServerThread = new Thread(server);
 		mainServerThread.start();
@@ -103,6 +140,8 @@ public class Server implements Runnable {
 			e.printStackTrace();
 		}
 		System.out.println("stopped");
+		
+		
 //		List<Float> array = new ArrayList<>();
 //		array.add(2f);
 //		array.add(8.56f);
@@ -222,8 +261,35 @@ public class Server implements Runnable {
 				// loadTrainConfigurations makes to the db. *****
 				trainConfigurations = loadTrainConfigurations();
 				testConfigurations = loadTestConfigurations();
-				// TODO: Override configuration file and weight files.
+				
+				
+				// Update the configuration file for the clients.
+				
+				// to number the weight vector files
+//				int experimentIndex = 0;
+//				int numExperiments = trainConfigurations.size() + testConfigurations.size();
+//				ExperimentConfiguration experimentConfiguration = new ExperimentConfiguration();
+//				experimentConfiguration.experimentId = new ExperimentConfiguration.ExperimentId[numExperiments];
+//				experimentConfiguration.features = new ExperimentConfiguration.Features[numExperiments];
+//				experimentConfiguration.diceRolls = new ExperimentConfiguration.DiceRolls[numExperiments];
+//				experimentConfiguration.weightVectorUrl = new String[numExperiments];
+//				experimentConfiguration.timeLeft = new int[numExperiments];
+//				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
+//					experimentConfiguration.experimentId[experimentIndex] =
+//							new ExperimentConfiguration.ExperimentId(trainConfig.getSvmId(), trainConfig.getIteration());
+//					ExperimentConfiguration.Features currFeaturesConfigEntry =
+//							new ExperimentConfiguration.Features();
+//					List<FeatureVectorProperties> currFeatureProperties = trainConfig.getFeatures();
+//					for (FeatureVectorProperties properties : currFeatureProperties) {
+//						if (properties.getFeature_type() == "hosts") {
+//							currFeaturesConfigEntry.idHosts = properties.get
+//						}
+//					}
+//					experimentConfiguration.features[experimentIndex] = currFeaturesConfigEntry;
+//				}
+				
 				loadingOrUpdatingConfigurations = false;
+				
 				
 				long deadline = System.currentTimeMillis() +
 						MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
@@ -241,7 +307,6 @@ public class Server implements Runnable {
 				Thread.sleep(MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE);
 				
 				
-				// TODO: put into separate functions
 				// The entries are guaranteed to already be in the db because if they aren't
 				// already at the beginning of the iteration, they will be created during
 				// loadTrainConfigurations() andloadTestConfigurations(). 
@@ -260,7 +325,15 @@ public class Server implements Runnable {
 			e.printStackTrace();
 		}
 		
-		// TODO: update configuration file to "{}"
+		
+		// shut down
+		
+		// delete the configuration file so the clients don't fetch the old configuration
+		try {
+			Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		
 		try {
 			if (packageListener != null) {
@@ -308,6 +381,7 @@ public class Server implements Runnable {
 			int iteration = allTestConfigurations.getInt("weight_vector.iteration");
 			WeightsConfiguration.FeatureVectorProperties features = new WeightsConfiguration.FeatureVectorProperties(
 					allTestConfigurations.getString("feature_vector.feature_type"),
+					allTestConfigurations.getInt("feature_vector.id"),
 					allTestConfigurations.getInt("feature_vector.num_features"),
 					allTestConfigurations.getInt("feature_vector.num_hashes"));
 			
@@ -415,6 +489,7 @@ public class Server implements Runnable {
 			int iteration = allTrainConfigurations.getInt("weight_vector.iteration");
 			WeightsConfiguration.FeatureVectorProperties features = new WeightsConfiguration.FeatureVectorProperties(
 					allTrainConfigurations.getString("feature_vector.feature_type"),
+					allTrainConfigurations.getInt("feature_vector.id"),
 					allTrainConfigurations.getInt("feature_vector.num_features"),
 					allTrainConfigurations.getInt("feature_vector.num_hashes"));
 			
