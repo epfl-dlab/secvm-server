@@ -138,6 +138,7 @@ public class Server implements Runnable {
 	private PreparedStatement weightsUpdateStatement;
 	private PreparedStatement gradientUpdateStatement;
 	private PreparedStatement trainEndTimeUpdateStatement;
+	private PreparedStatement gradientNumParticipantsUpdateStatement;
 	
 	
 	public Server() {
@@ -186,6 +187,10 @@ public class Server implements Runnable {
 					.UPDATE_TRAIN_END_TIME
 					.createPreparedStatement(dbConnection);
 			
+			gradientNumParticipantsUpdateStatement = SqlQueries
+					.UPDATE_GRADIENT_NUM_PARTICIPANTS
+					.createPreparedStatement(dbConnection);
+			
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -227,7 +232,26 @@ public class Server implements Runnable {
 				
 				Thread.sleep(MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE);
 				
-				// TODO: update database entries
+				// The entries are guaranteed to already be in the db because if they aren't
+				// already at the beginning of the iteration, they will be created during
+				// loadTrainConfigurations() andloadTestConfigurations(). 
+				
+				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
+					gradientNumParticipantsUpdateStatement.setString(1,
+							DataUtils.atomicIntegerArrayToBase64(
+									trainConfig.getGradientNotNormalized()));
+					System.out.println(DataUtils.atomicIntegerArrayToBase64(
+									trainConfig.getGradientNotNormalized()));
+					gradientNumParticipantsUpdateStatement.setInt(2,
+							trainConfig.getNumParticipants());
+					gradientNumParticipantsUpdateStatement.setInt(3,
+							trainConfig.getSvmId());
+					gradientNumParticipantsUpdateStatement.setInt(4,
+							trainConfig.getIteration());
+					gradientNumParticipantsUpdateStatement.executeUpdate();
+				}
+				
+				// TODO: the same for testConfigurations
 			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();

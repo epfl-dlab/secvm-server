@@ -31,6 +31,9 @@ public enum SqlQueries {
 	UPDATE_TRAIN_END_TIME(
 			"UPDATE weight_vector SET training_end_time = ? WHERE svm_id = ? AND iteration = ?"),
 	
+	UPDATE_GRADIENT_NUM_PARTICIPANTS(
+			"UPDATE weight_vector SET gradient_not_normalized = ?, num_participants = ? WHERE svm_id = ? AND iteration = ?"),
+	
 	GET_TRAIN_CONFIGURATIONS(
 			"SELECT svm.svm_id, svm.min_number_train_participants, weight_vector.num_participants," + 
 			"	svm.lambda, svm.num_bins, dice_roll.probabilities, svm.train_outcomes_dice_roll," +
