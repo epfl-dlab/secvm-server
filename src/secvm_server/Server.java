@@ -46,6 +46,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -148,13 +150,17 @@ public class Server implements Runnable {
 	
 	// Should the server be stopped?
 	private volatile boolean stop = false;
-	// Is the server currently currently loading the next configurations
-	// from the db or updating the corresponding files?
-	private boolean loadingOrUpdatingConfigurations = false;
+	// to not access the weights configurations while the server is fetching new ones
+	// from the db
+	// TODO: maybe remove the "true" parameter for better performance
+	// TODO: for even better performance: omit the locks completely and just catch
+	// NullPointerExceptions in the PackageHandler
+	private final ReadWriteLock trainWeightsConfigurationsLock = new ReentrantReadWriteLock(true);
+	private final ReadWriteLock testWeightsConfigurationsLock = new ReentrantReadWriteLock(true);
+	
 	Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations;
 	Map<ServerRequestId, TestWeightsConfiguration> testConfigurations;
 	
-	// TODO: close these in the end if not null
 	private Connection dbConnection;
 	private PreparedStatement participationPackageInsertStatement;
 	private PreparedStatement trainPackageInsertStatement;
@@ -248,19 +254,26 @@ public class Server implements Runnable {
 			packageListenerThread.start();
 			
 			outer: while (true) {
-				loadingOrUpdatingConfigurations = true;
-				
-				// ***** Always call them in this order since loadTestConfigurations depends on the changes
-				// loadTrainConfigurations makes to the db. *****
-				trainConfigurations = loadTrainConfigurations();
-				testConfigurations = loadTestConfigurations();
+				// ***** Always call train and test configuration loading in this order
+				// since loadTestConfigurations depends on the changes loadTrainConfigurations
+				// makes to the db. *****
+				trainWeightsConfigurationsLock.writeLock().lock();
+				try {
+					trainConfigurations = loadTrainConfigurations();
+				} finally {
+					trainWeightsConfigurationsLock.writeLock().unlock();
+				}
+				testWeightsConfigurationsLock.writeLock().lock();
+				try {
+					testConfigurations = loadTestConfigurations();
+				} finally {
+					testWeightsConfigurationsLock.writeLock().unlock();
+				}
 				
 				
 				// write the configuration file and weight files for the clients
 				JsonObject configurationJson = createConfigurationAndWeightFilesFromWeightsConfigurations(
 						trainConfigurations.values(), testConfigurations.values());
-				
-				loadingOrUpdatingConfigurations = false;
 				
 				
 				long deadline = System.currentTimeMillis() +
@@ -802,18 +815,23 @@ public class Server implements Runnable {
 		    					testConfigurations.get(new ServerRequestId(svmId, iteration));
 		    			// otherwise the package is outdated
 		    			if (configurationToUpdate != null) {
-		    				// male
-		    				if (trueGender == 0) {
-		    					configurationToUpdate.incrementMaleOverall();
-		    					if (predictedGender == 0) {
-		    						configurationToUpdate.incrementMaleCorrect();
-		    					}
-		    				// female
-		    				} else {
-		    					configurationToUpdate.incrementFemaleOverall();
-		    					if (predictedGender == 1) {
-		    						configurationToUpdate.incrementFemaleCorrect();
-		    					}
+		    				testWeightsConfigurationsLock.readLock().lock();
+		    				try {
+			    				// male
+			    				if (trueGender == 0) {
+			    					configurationToUpdate.incrementMaleOverall();
+			    					if (predictedGender == 0) {
+			    						configurationToUpdate.incrementMaleCorrect();
+			    					}
+			    				// female
+			    				} else {
+			    					configurationToUpdate.incrementFemaleOverall();
+			    					if (predictedGender == 1) {
+			    						configurationToUpdate.incrementFemaleCorrect();
+			    					}
+			    				}
+		    				} finally {
+		    					testWeightsConfigurationsLock.readLock().unlock();
 		    				}
 		    			}
 			    	} else {
@@ -831,10 +849,15 @@ public class Server implements Runnable {
 			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
 			    			// otherwise the package is outdated
 			    			if (configurationToUpdate != null) {
-			    				if (value == 0) {
-			    					configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
-			    				} else {
-			    					configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+			    				trainWeightsConfigurationsLock.readLock().lock();
+			    				try {
+				    				if (value == 0) {
+				    					configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
+				    				} else {
+				    					configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+				    				}
+			    				} finally {
+			    					trainWeightsConfigurationsLock.readLock().unlock();
 			    				}
 			    			}
 			    		// participation package
@@ -847,7 +870,12 @@ public class Server implements Runnable {
 			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
 			    			// otherwise the package is outdated
 			    			if (configurationToUpdate != null) {
-			    				configurationToUpdate.incrementNumParticipants();
+			    				trainWeightsConfigurationsLock.readLock().lock();
+			    				try {
+			    					configurationToUpdate.incrementNumParticipants();
+			    				} finally {
+			    					trainWeightsConfigurationsLock.readLock().unlock();
+			    				}
 			    			}
 			    		}
 			    	}
