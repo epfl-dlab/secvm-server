@@ -2,10 +2,15 @@ package secvm_server;
 
 import java.beans.FeatureDescriptor;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -52,6 +57,8 @@ import com.google.gson.annotations.JsonAdapter;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
 import secvm_server.WeightsConfiguration.FeatureVectorProperties;
+import secvm_server.json_objects.ExperimentConfigurationForClients;
+import secvm_server.json_objects.WeightsForClients;
 
 public class Server implements Runnable {
 	
@@ -74,23 +81,6 @@ public class Server implements Runnable {
 	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
 	
 	public static void main(String[] args) {
-//		ExperimentConfiguration ec = new ExperimentConfiguration();
-//		ec.experimentId = new ExperimentConfiguration.ExperimentId[]
-//				{	new ExperimentConfiguration.ExperimentId(1, 7),
-//					new ExperimentConfiguration.ExperimentId(2, 4)
-//				};
-//		ec.features = new ExperimentConfiguration.Features[]
-//				{	new ExperimentConfiguration.Features("hosts_a", 3, 1, "url_a", 7, 2),
-//					new ExperimentConfiguration.Features("url_b", 5, 1, null, 0, 0)
-//				};
-//		ec.featuresToDelete = new String[] {"id1", "id2", "id3", "id4"};
-//		ec.diceRolls = new ExperimentConfiguration.DiceRolls[]
-//				{	new ExperimentConfiguration.DiceRolls("diceRoll_a", new float[] {0.5f, 0.3f, 0.2f}, null, new int[] {0, 2}),
-//					new ExperimentConfiguration.DiceRolls("diceRoll_b", new float[] {1f}, new int[] {0}, null)
-//				};
-//		ec.weightVectorUrl = new String[] {"http://localhost:8000/weights1.json", "http://localhost:8000/weights2.json"};
-//		ec.timeLeft = new int[] {10000, 10000};
-//		System.out.println((new GsonBuilder()).create().toJson(ec));
 		
 		Server server = new Server();
 		Thread mainServerThread = new Thread(server);
@@ -180,6 +170,8 @@ public class Server implements Runnable {
 	private PreparedStatement gradientNumParticipantsUpdateStatement;
 	private PreparedStatement testResultsUpdateStatement;
 	
+	private Gson gson = new Gson();
+	
 	
 	public Server() {
 		jsonParser = new JsonParser();
@@ -257,59 +249,38 @@ public class Server implements Runnable {
 			
 			outer: while (true) {
 				loadingOrUpdatingConfigurations = true;
+				
 				// ***** Always call them in this order since loadTestConfigurations depends on the changes
 				// loadTrainConfigurations makes to the db. *****
 				trainConfigurations = loadTrainConfigurations();
 				testConfigurations = loadTestConfigurations();
 				
 				
-				// Update the configuration file for the clients.
+				// write the configuration file and weight files for the clients
+				JsonObject configurationJson = createConfigurationAndWeightFilesFromWeightsConfigurations(
+						trainConfigurations.values(), testConfigurations.values());
 				
-				// to number the weight vector files
-//				int experimentIndex = 0;
-//				int numExperiments = trainConfigurations.size() + testConfigurations.size();
-//				ExperimentConfiguration experimentConfiguration = new ExperimentConfiguration();
-//				experimentConfiguration.experimentId = new ExperimentConfiguration.ExperimentId[numExperiments];
-//				experimentConfiguration.features = new ExperimentConfiguration.Features[numExperiments];
-//				experimentConfiguration.diceRolls = new ExperimentConfiguration.DiceRolls[numExperiments];
-//				experimentConfiguration.weightVectorUrl = new String[numExperiments];
-//				experimentConfiguration.timeLeft = new int[numExperiments];
-//				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
-//					experimentConfiguration.experimentId[experimentIndex] =
-//							new ExperimentConfiguration.ExperimentId(trainConfig.getSvmId(), trainConfig.getIteration());
-//					
-//					ExperimentConfiguration.Features currFeaturesConfigEntry =
-//							new ExperimentConfiguration.Features();
-//					List<FeatureVectorProperties> currFeatureProperties = trainConfig.getFeatures();
-//					for (FeatureVectorProperties properties : currFeatureProperties) {
-//						if (properties.getFeature_type() == "hosts") {
-//							currFeaturesConfigEntry.idHosts = String.valueOf(properties.getId());
-//							currFeaturesConfigEntry.numHosts = properties.getNum_features();
-//							currFeaturesConfigEntry.numHashesHosts = properties.getNum_hashes();
-//						} else {
-//							currFeaturesConfigEntry.idTitleWords = String.valueOf(properties.getId());
-//							currFeaturesConfigEntry.numTitleWords = properties.getNum_features();
-//							currFeaturesConfigEntry.numHashesTitleWords = properties.getNum_hashes();
-//						}
-//					}
-//					experimentConfiguration.features[experimentIndex] = currFeaturesConfigEntry;
-//					
-//					experimentConfiguration.diceRolls[experimentIndex] = new ExperimentConfiguration.DiceRolls(id, probs, train, test)
-//				}
-//				
 				loadingOrUpdatingConfigurations = false;
 				
 				
 				long deadline = System.currentTimeMillis() +
 						MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
 
-				// In case of stop == true we don't immediately break the outer loop but instead
-				// still write the results obtained so far to the database.
 				while (System.currentTimeMillis() < deadline) {
 					if (stop) {
 						break outer;
 					}
-					// TODO: update configuration file
+					int timeLeft = (int) (deadline - System.currentTimeMillis());
+					// update the time that is left for the clients to send their updates
+					if (timeLeft > 0) {
+						configurationJson.remove("timeLeft");
+						JsonArray updatedTimesLeft = new JsonArray();
+						Collections.nCopies(trainConfigurations.size() + testConfigurations.size(), timeLeft).
+							forEach(updatedTimesLeft::add);
+						configurationJson.add("timeLeft", updatedTimesLeft);
+						DataUtils.writeStringToFile(configurationJson.toString(), CONFIGURATION_FILE_PATH);
+					}
+
 					Thread.sleep(1000);
 				}
 				
@@ -601,6 +572,90 @@ public class Server implements Runnable {
 		allTrainConfigurations.close();
 		
 		return trainConfigurations;
+	}
+	
+	/**
+	 * @return the configuration as JSON (as it is written to the configuration file)
+	 */
+	private JsonObject createConfigurationAndWeightFilesFromWeightsConfigurations(
+			Collection<TrainWeightsConfiguration> trainConfigurations,
+			Collection<TestWeightsConfiguration> testConfigurations) {
+
+		// to number the weight vector files
+		int experimentIndex = 0;
+		int numExperiments = trainConfigurations.size() + testConfigurations.size();
+		ExperimentConfigurationForClients experimentConfiguration = new ExperimentConfigurationForClients();
+		experimentConfiguration.experimentId = new ExperimentConfigurationForClients.ExperimentId[numExperiments];
+		experimentConfiguration.features = new ExperimentConfigurationForClients.Features[numExperiments];
+		experimentConfiguration.diceRolls = new ExperimentConfigurationForClients.DiceRolls[numExperiments];
+		experimentConfiguration.weightVectorUrl = new String[numExperiments];
+		experimentConfiguration.timeLeft = new int[numExperiments];
+		
+		for (TrainWeightsConfiguration trainConfig : trainConfigurations) {
+			fillExperimentConfigurationEntry(trainConfig, experimentConfiguration, experimentIndex);
+			
+			experimentConfiguration.diceRolls[experimentIndex] =
+					new ExperimentConfigurationForClients.DiceRolls(
+							String.valueOf(trainConfig.getDiceRollId()),
+							DataUtils.floatListToArray(trainConfig.getDiceRollProbabilities()),
+							DataUtils.intListToArray(trainConfig.getTrainOutcomesDiceRoll()),
+							null);
+			
+			DataUtils.writeStringToFile(
+					DataUtils.floatListToBase64(trainConfig.getWeightsToUseForTraining()),
+					experimentConfiguration.weightVectorUrl[experimentIndex]);
+			
+			++experimentIndex;
+		}
+		
+		for (TestWeightsConfiguration testConfig : testConfigurations) {
+			fillExperimentConfigurationEntry(testConfig, experimentConfiguration, experimentIndex);
+			
+			experimentConfiguration.diceRolls[experimentIndex] =
+					new ExperimentConfigurationForClients.DiceRolls(
+							String.valueOf(testConfig.getDiceRollId()),
+							DataUtils.floatListToArray(testConfig.getDiceRollProbabilities()),
+							null,
+							DataUtils.intListToArray(testConfig.getTestOutcomesDiceRoll()));
+
+			DataUtils.writeStringToFile(
+					DataUtils.floatListToBase64(testConfig.getWeightsToUseForTesting()),
+					experimentConfiguration.weightVectorUrl[experimentIndex]);
+			
+			++experimentIndex;
+		}
+		
+		JsonObject configJson = (JsonObject) gson.toJsonTree(experimentConfiguration);
+		DataUtils.writeStringToFile(configJson.toString(), CONFIGURATION_FILE_PATH);
+		
+		return configJson;
+	}
+	
+	private void fillExperimentConfigurationEntry(
+			WeightsConfiguration weightsConfiguration, ExperimentConfigurationForClients experimentConfiguration, int experimentIndex) {
+		
+		experimentConfiguration.experimentId[experimentIndex] =
+				new ExperimentConfigurationForClients.ExperimentId(weightsConfiguration.getSvmId(), weightsConfiguration.getIteration());
+		
+		ExperimentConfigurationForClients.Features currFeaturesConfigEntry =
+				new ExperimentConfigurationForClients.Features();
+		List<FeatureVectorProperties> currFeatureProperties = weightsConfiguration.getFeatures();
+		for (FeatureVectorProperties properties : currFeatureProperties) {
+			if (properties.getFeature_type() == "hosts") {
+				currFeaturesConfigEntry.idHosts = String.valueOf(properties.getId());
+				currFeaturesConfigEntry.numHosts = properties.getNum_features();
+				currFeaturesConfigEntry.numHashesHosts = properties.getNum_hashes();
+			} else {
+				currFeaturesConfigEntry.idTitleWords = String.valueOf(properties.getId());
+				currFeaturesConfigEntry.numTitleWords = properties.getNum_features();
+				currFeaturesConfigEntry.numHashesTitleWords = properties.getNum_hashes();
+			}
+		}
+		experimentConfiguration.features[experimentIndex] = currFeaturesConfigEntry;
+		
+		experimentConfiguration.weightVectorUrl[experimentIndex] = WEIGHTS_FILE_BASE_PATH + experimentIndex + ".json";
+		
+		experimentConfiguration.timeLeft[experimentIndex] = (int) MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
 	}
 	
 	private void updateWeightVectorTableAfterTraining (TrainWeightsConfiguration trainConfig) throws SQLException {
