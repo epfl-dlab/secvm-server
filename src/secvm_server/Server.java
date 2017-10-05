@@ -176,7 +176,7 @@ public class Server implements Runnable {
 	private PreparedStatement gradientNumParticipantsUpdateStatement;
 	private PreparedStatement testResultsUpdateStatement;
 	
-	private Gson gson = new Gson();
+	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();;
 	
 	
 	public Server() {
