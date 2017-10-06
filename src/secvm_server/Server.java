@@ -104,6 +104,7 @@ public class Server implements Runnable {
 						"  \"l\": 1,\n" + 
 						"  \"s\": 1\n" + 
 						"}");
+//				osw.write("{fdslkfd");
 				osw.flush();
 				//			System.out.println(s.isConnected());
 				s.close();
@@ -793,22 +794,27 @@ public class Server implements Runnable {
 				this.socket = socket;
 			}
 
+			// If the received data isn't of one of the three package types expected,
+			// then a RuntimeException (either NullPointerException or one of the Gson
+			// Exceptions) will be thrown and the package will be discarded.
 			@Override
 			public void run() {
 			    try (BufferedReader socketReader = new BufferedReader(
 			    		new InputStreamReader(socket.getInputStream()))) {
-			    	JsonObject dataReceived = jsonParser.parse(socketReader).getAsJsonObject();
+			    	// if the data isn't valid JSON, this will throw a RuntimeException
+			    	JsonElement jsonElementReceived = jsonParser.parse(socketReader);
+			    	JsonObject objectReceived = jsonElementReceived.getAsJsonObject();
 			    	UserPackage packageReceived = null;
 			    	
-			    	JsonArray requestIdArray = dataReceived.getAsJsonArray("e");
+			    	JsonArray requestIdArray = objectReceived.getAsJsonArray("e");
 			    	int svmId = requestIdArray.get(0).getAsInt();
 			    	int iteration = requestIdArray.get(1).getAsInt();
 			    	
-			    	String packageRandomId = dataReceived.get("p").getAsString();
-			    	JsonElement predictedGenderJsonElement = dataReceived.get("s");
+			    	String packageRandomId = objectReceived.get("p").getAsString();
+			    	JsonElement predictedGenderJsonElement = objectReceived.get("s");
 			    	// test package
 			    	if (predictedGenderJsonElement != null) {
-		    			int trueGender = dataReceived.get("l").getAsInt();
+		    			int trueGender = objectReceived.get("l").getAsInt();
 		    			int predictedGender = predictedGenderJsonElement.getAsInt();
 		    			packageReceived = new TestPackage(
 		    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
@@ -839,10 +845,10 @@ public class Server implements Runnable {
 		    				}
 		    			}
 			    	} else {
-			    		JsonElement updateValueJsonElement = dataReceived.get("v");
+			    		JsonElement updateValueJsonElement = objectReceived.get("v");
 			    		// train package
 			    		if (updateValueJsonElement != null) {
-			    			int index = dataReceived.get("i").getAsInt();
+			    			int index = objectReceived.get("i").getAsInt();
 			    			int value = updateValueJsonElement.getAsInt();
 			    			packageReceived = new TrainPackage(
 			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
