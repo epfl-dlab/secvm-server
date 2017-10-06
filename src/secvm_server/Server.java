@@ -69,10 +69,10 @@ public class Server implements Runnable {
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
 	
-	public static final String CONFIGURATION_FILE_PATH = "data/configuration.json";
-	public static final String WEIGHTS_FILE_BASE_PATH = "data/weights";
+	public static final String CONFIGURATION_FILE_PATH = "configuration.json";
+	public static final String WEIGHTS_FILE_BASE_PATH = "http://localhost:8000/weights";
 	
-	public static final int PORT = 8080;
+	public static final int PORT = 8081;
 	
 	public static final int NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING = 2;
 	

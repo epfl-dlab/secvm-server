@@ -122,6 +122,10 @@ public final class DataUtils {
 	 * Handles the IOException by itself.
 	 */
 	public static void writeStringToFile(String data, String path) {
+		// TODO: remove this
+		if (path.startsWith("http://localhost:8000/")) {
+			path = path.substring("http://localhost:8000/".length());
+		}
 		try (Writer writer = new BufferedWriter(new OutputStreamWriter(
 	              new FileOutputStream(path), "utf-8"))) {
 			writer.write(data);
