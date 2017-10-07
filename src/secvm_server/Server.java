@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -57,6 +58,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.annotations.JsonAdapter;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 
 import secvm_server.WeightsConfiguration.FeatureVectorProperties;
 import secvm_server.json_objects.ExperimentConfigurationForClients;
@@ -81,6 +85,7 @@ public class Server implements Runnable {
 	// TODO: maybe make those parameter of main()
 	public static final long MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES = 1000;
 	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
+	public static final int SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP = 100;
 	
 	public static void main(String[] args) {
 		
@@ -88,51 +93,51 @@ public class Server implements Runnable {
 		Thread mainServerThread = new Thread(server);
 		mainServerThread.start();
 		
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-		}
-		boolean blubb = true;
-		while (blubb) {
-			try {
-				Socket s = new Socket("127.0.0.1", PORT);
-				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-				osw.write("{\n" + 
-						"  \"e\": [1, 3],\n" + 
-						"  \"p\": \"jkolk\",\n" + 
-						"  \"l\": 1,\n" + 
-						"  \"s\": 1\n" + 
-						"}");
-//				osw.write("{fdslkfd");
-				osw.flush();
-				//			System.out.println(s.isConnected());
-				s.close();
-				Thread.sleep(1000);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-		}
-		
-		// TODO: Listen on System.in for shutdown command and then shut down.
-		
-		try {
-			Thread.sleep(2000);
-			server.stop();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		try {
-			mainServerThread.join();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		System.out.println("stopped");
+//		try {
+//			Thread.sleep(1000);
+//		} catch (InterruptedException e1) {
+//			e1.printStackTrace();
+//		}
+//		boolean blubb = true;
+//		while (blubb) {
+//			try {
+//				Socket s = new Socket("127.0.0.1", PORT);
+//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
+//				osw.write("{\n" + 
+//						"  \"e\": [1, 3],\n" + 
+//						"  \"p\": \"jkolk\",\n" + 
+//						"  \"l\": 1,\n" + 
+//						"  \"s\": 1\n" + 
+//						"}");
+////				osw.write("{fdslkfd");
+//				osw.flush();
+//				//			System.out.println(s.isConnected());
+//				s.close();
+//				Thread.sleep(1000);
+//			} catch (UnknownHostException e) {
+//				e.printStackTrace();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//
+//		}
+//		
+//		// TODO: Listen on System.in for shutdown command and then shut down.
+//		
+//		try {
+//			Thread.sleep(2000);
+//			server.stop();
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
+//		try {
+//			mainServerThread.join();
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
+//		System.out.println("stopped");
 		
 		
 //		List<Float> array = new ArrayList<>();
@@ -242,17 +247,19 @@ public class Server implements Runnable {
 	}
 	
 	@Override
-	public void run() {		
-		PackageListener packageListener = null;
-		Thread packageListenerThread = null;
-		// We need to hold a reference to the ServerSocket in this thread for being able to close it
-		// which is the only way of letting the PackageListener thread break out of ServerSocket#accept().
-		ServerSocket serverSocket = null;
+	public void run() {
 		try {
-			serverSocket = new ServerSocket(PORT);
-			packageListener = new PackageListener(serverSocket, NUM_THREADS_PROCESSING_INCOMING_PACKAGES);
-			packageListenerThread = new Thread(packageListener);
-			packageListenerThread.start();
+			// TODO: maybe specify the maximum number of queued connections (second parameter)
+			HttpServer httpServer = HttpServer.create(new InetSocketAddress(PORT), 0);
+			
+			// for handling incoming packages
+			ExecutorService packageHandlerExecutor = Executors.newFixedThreadPool(NUM_THREADS_PROCESSING_INCOMING_PACKAGES);
+			// for writing incoming packages to the db
+			ExecutorService packageLoggingExecutor = Executors.newSingleThreadExecutor();
+			
+			httpServer.createContext("/", new PackageHandler(packageLoggingExecutor));
+			httpServer.setExecutor(packageHandlerExecutor);
+			httpServer.start();
 			
 			outer: while (true) {
 				// ***** Always call train and test configuration loading in this order
@@ -313,6 +320,37 @@ public class Server implements Runnable {
 					updateTestAccuracyTableAfterTesting(testConfig);
 				}
 			}
+			
+			
+			// shut down
+			
+			httpServer.stop(SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP);
+			
+			packageHandlerExecutor.shutdown();
+			while (true) {
+				try {
+					if (packageHandlerExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+						break;
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					break;
+				}
+			}
+			
+			// packageLoggingExecutor can only be shut down after the termination of incomingPackageExecutor
+			// because the latter uses the former one.
+			packageLoggingExecutor.shutdown();
+			while (true) {
+				try {
+					if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+						break;
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					break;
+				}
+			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
@@ -320,7 +358,7 @@ public class Server implements Runnable {
 		}
 		
 		
-		// shut down
+		// continue shutting down
 		
 		// delete the configuration file so the clients don't fetch the old configuration
 		try {
@@ -330,27 +368,10 @@ public class Server implements Runnable {
 		}
 		
 		try {
-			if (packageListener != null) {
-				packageListener.stop();
-			}
-			if (serverSocket != null) {
-				try {
-					serverSocket.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			if (packageListenerThread != null) {
-				try {
-					packageListenerThread.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
 			dbConnection.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-		}	
+		}
 	}
 	
 	public void stop() {
@@ -715,188 +736,119 @@ public class Server implements Runnable {
 		dataSource.setDatabaseName(dbName);
 		return dataSource.getConnection();
 	}
+
 	
-	// TODO: maybe put this into its own file
-	class PackageListener implements Runnable {
+	class PackageHandler implements HttpHandler {
 		
-		private ServerSocket serverSocket;
-		private ExecutorService incomingPackageExecutor;
 		private ExecutorService packageLoggingExecutor;
 		
-		// Should the listener be stopped?
-		private volatile boolean stop = false;
-
-		public PackageListener(ServerSocket serverSocket, int numThreadsPackageProcessing) throws IOException {
-			this.serverSocket = serverSocket;
-			this.incomingPackageExecutor = Executors.newFixedThreadPool(numThreadsPackageProcessing);
-			this.packageLoggingExecutor = Executors.newSingleThreadExecutor();
+		public PackageHandler(ExecutorService packageLoggingExecutor) {
+			this.packageLoggingExecutor = packageLoggingExecutor;
 		}
 
+		// If the received data isn't of one of the three package types expected,
+		// then a RuntimeException (either NullPointerException or one of the Gson
+		// Exceptions) will be thrown and the package will be discarded.
 		@Override
-		public void run() {
-			while (!stop) {
-				try {
-					// TODO: add SecurityManager to check if the connection comes from the Cliqz proxy
-					// and otherwise log this event in 'catch (SecurityException e)' 
-					Socket socket = serverSocket.accept();
-					incomingPackageExecutor.submit(new PackageHandler(socket));
-				} catch (SocketException e) {
-					break;
-				} catch (SecurityException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			
-			incomingPackageExecutor.shutdown();
-			while (true) {
-				try {
-					if (incomingPackageExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-						break;
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					break;
-				}
-			}
-			
-			// packageLoggingExecutor can only be shut down after the termination of incomingPackageExecutor
-			// because the latter uses the former one.
-			packageLoggingExecutor.shutdown();
-			while (true) {
-				try {
-					if (packageLoggingExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-						break;
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					break;
-				}
-			}
+		public void handle(HttpExchange httpExchange) throws IOException {
+			try (BufferedReader socketReader = new BufferedReader(
+					new InputStreamReader(httpExchange.getRequestBody()))) {
+				// if the data isn't valid JSON, this will throw a RuntimeException
+				JsonElement jsonElementReceived = jsonParser.parse(socketReader);
+				System.out.println(jsonElementReceived);
+				JsonObject objectReceived = jsonElementReceived.getAsJsonObject();
+				UserPackage packageReceived = null;
 
-			try {
-				serverSocket.close();
+				JsonArray requestIdArray = objectReceived.getAsJsonArray("e");
+				int svmId = requestIdArray.get(0).getAsInt();
+				int iteration = requestIdArray.get(1).getAsInt();
+
+				String packageRandomId = objectReceived.get("p").getAsString();
+				JsonElement predictedGenderJsonElement = objectReceived.get("s");
+				// test package
+				if (predictedGenderJsonElement != null) {
+					int trueGender = objectReceived.get("l").getAsInt();
+					int predictedGender = predictedGenderJsonElement.getAsInt();
+					packageReceived = new TestPackage(
+							svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+							trueGender, predictedGender);
+					packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
+
+					TestWeightsConfiguration configurationToUpdate =
+							testConfigurations.get(new ServerRequestId(svmId, iteration));
+					// otherwise the package is outdated
+					if (configurationToUpdate != null) {
+						testWeightsConfigurationsLock.readLock().lock();
+						try {
+							// male
+							if (trueGender == 0) {
+								configurationToUpdate.incrementMaleOverall();
+								if (predictedGender == 0) {
+									configurationToUpdate.incrementMaleCorrect();
+								}
+								// female
+							} else {
+								configurationToUpdate.incrementFemaleOverall();
+								if (predictedGender == 1) {
+									configurationToUpdate.incrementFemaleCorrect();
+								}
+							}
+						} finally {
+							testWeightsConfigurationsLock.readLock().unlock();
+						}
+					}
+				} else {
+					JsonElement updateValueJsonElement = objectReceived.get("v");
+					// train package
+					if (updateValueJsonElement != null) {
+						int index = objectReceived.get("i").getAsInt();
+						int value = updateValueJsonElement.getAsInt();
+						packageReceived = new TrainPackage(
+								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+								index, value);
+						packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
+
+						TrainWeightsConfiguration configurationToUpdate =
+								trainConfigurations.get(new ServerRequestId(svmId, iteration));
+						// otherwise the package is outdated
+						if (configurationToUpdate != null) {
+							trainWeightsConfigurationsLock.readLock().lock();
+							try {
+								if (value == 0) {
+									configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
+								} else {
+									configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+								}
+							} finally {
+								trainWeightsConfigurationsLock.readLock().unlock();
+							}
+						}
+						// participation package
+					} else {
+						packageReceived = new ParticipationPackage(
+								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
+						packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
+
+						TrainWeightsConfiguration configurationToUpdate =
+								trainConfigurations.get(new ServerRequestId(svmId, iteration));
+						// otherwise the package is outdated
+						if (configurationToUpdate != null) {
+							trainWeightsConfigurationsLock.readLock().lock();
+							try {
+								configurationToUpdate.incrementNumParticipants();
+							} finally {
+								trainWeightsConfigurationsLock.readLock().unlock();
+							}
+						}
+					}
+				}
+
+				packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-		
-		public void stop() {
-			stop = true;
-		}
-		
-		class PackageHandler implements Runnable {
-			
-			private Socket socket;
-			
-			public PackageHandler(Socket socket) {
-				this.socket = socket;
-			}
 
-			// If the received data isn't of one of the three package types expected,
-			// then a RuntimeException (either NullPointerException or one of the Gson
-			// Exceptions) will be thrown and the package will be discarded.
-			@Override
-			public void run() {
-			    try (BufferedReader socketReader = new BufferedReader(
-			    		new InputStreamReader(socket.getInputStream()))) {
-			    	// if the data isn't valid JSON, this will throw a RuntimeException
-			    	JsonElement jsonElementReceived = jsonParser.parse(socketReader);
-			    	JsonObject objectReceived = jsonElementReceived.getAsJsonObject();
-			    	UserPackage packageReceived = null;
-			    	
-			    	JsonArray requestIdArray = objectReceived.getAsJsonArray("e");
-			    	int svmId = requestIdArray.get(0).getAsInt();
-			    	int iteration = requestIdArray.get(1).getAsInt();
-			    	
-			    	String packageRandomId = objectReceived.get("p").getAsString();
-			    	JsonElement predictedGenderJsonElement = objectReceived.get("s");
-			    	// test package
-			    	if (predictedGenderJsonElement != null) {
-		    			int trueGender = objectReceived.get("l").getAsInt();
-		    			int predictedGender = predictedGenderJsonElement.getAsInt();
-		    			packageReceived = new TestPackage(
-		    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
-		    					trueGender, predictedGender);
-		    			packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
-			    		
-		    			TestWeightsConfiguration configurationToUpdate =
-		    					testConfigurations.get(new ServerRequestId(svmId, iteration));
-		    			// otherwise the package is outdated
-		    			if (configurationToUpdate != null) {
-		    				testWeightsConfigurationsLock.readLock().lock();
-		    				try {
-			    				// male
-			    				if (trueGender == 0) {
-			    					configurationToUpdate.incrementMaleOverall();
-			    					if (predictedGender == 0) {
-			    						configurationToUpdate.incrementMaleCorrect();
-			    					}
-			    				// female
-			    				} else {
-			    					configurationToUpdate.incrementFemaleOverall();
-			    					if (predictedGender == 1) {
-			    						configurationToUpdate.incrementFemaleCorrect();
-			    					}
-			    				}
-		    				} finally {
-		    					testWeightsConfigurationsLock.readLock().unlock();
-		    				}
-		    			}
-			    	} else {
-			    		JsonElement updateValueJsonElement = objectReceived.get("v");
-			    		// train package
-			    		if (updateValueJsonElement != null) {
-			    			int index = objectReceived.get("i").getAsInt();
-			    			int value = updateValueJsonElement.getAsInt();
-			    			packageReceived = new TrainPackage(
-			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
-			    					index, value);
-			    			packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
-			    			
-			    			TrainWeightsConfiguration configurationToUpdate =
-			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
-			    			// otherwise the package is outdated
-			    			if (configurationToUpdate != null) {
-			    				trainWeightsConfigurationsLock.readLock().lock();
-			    				try {
-				    				if (value == 0) {
-				    					configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
-				    				} else {
-				    					configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
-				    				}
-			    				} finally {
-			    					trainWeightsConfigurationsLock.readLock().unlock();
-			    				}
-			    			}
-			    		// participation package
-			    		} else {
-			    			packageReceived = new ParticipationPackage(
-			    					svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
-			    			packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
-			    			
-			    			TrainWeightsConfiguration configurationToUpdate =
-			    					trainConfigurations.get(new ServerRequestId(svmId, iteration));
-			    			// otherwise the package is outdated
-			    			if (configurationToUpdate != null) {
-			    				trainWeightsConfigurationsLock.readLock().lock();
-			    				try {
-			    					configurationToUpdate.incrementNumParticipants();
-			    				} finally {
-			    					trainWeightsConfigurationsLock.readLock().unlock();
-			    				}
-			    			}
-			    		}
-			    	}
-			    	
-			    	packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			
-		}
 	}
 
 }
