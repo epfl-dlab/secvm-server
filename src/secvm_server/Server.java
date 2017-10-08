@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.InetSocketAddress;
@@ -123,21 +124,23 @@ public class Server implements Runnable {
 //			}
 //
 //		}
-//		
-//		// TODO: Listen on System.in for shutdown command and then shut down.
-//		
-//		try {
-//			Thread.sleep(2000);
-//			server.stop();
-//		} catch (InterruptedException e) {
-//			e.printStackTrace();
-//		}
-//		try {
-//			mainServerThread.join();
-//		} catch (InterruptedException e) {
-//			e.printStackTrace();
-//		}
-//		System.out.println("stopped");
+		
+		try (BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in))) {
+			String input = inputReader.readLine();
+			while (!input.equals("stop")) {
+				input = inputReader.readLine();
+			}
+			
+			server.stop();
+			try {
+				mainServerThread.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			System.out.println("stopped");
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		
 		
 //		List<Float> array = new ArrayList<>();
@@ -273,7 +276,7 @@ public class Server implements Runnable {
 			ExecutorService packageLoggingExecutor = Executors.newSingleThreadExecutor();
 			
 			httpServer.createContext("/", new PackageHandler(packageLoggingExecutor));
-			httpServer.setExecutor(packageHandlerExecutor);
+			httpServer.setExecutor(null);
 			httpServer.start();
 			
 			outer: while (true) {
@@ -339,7 +342,15 @@ public class Server implements Runnable {
 			
 			// shut down
 			
-			httpServer.stop(SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP);
+			System.out.println("stopping ...");
+			
+			// Somehow this blocks until the end of the delay, even when the server hasn't
+			// received any connections at all, so we just set a delay of 1 second.
+			// But since we have an externally managed Executor we still don't lose any of
+			// the packages coming from open connections because the threads are alive
+			// until the ExecutorService is shut down.
+//			httpServer.stop(SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP);
+			httpServer.stop(1);
 			
 			packageHandlerExecutor.shutdown();
 			while (true) {
