@@ -67,6 +67,21 @@ public enum SqlQueries {
 	GET_TEST_ACCURACY(
 			"SELECT female_overall, male_overall, female_correct, male_correct\n" +
 			"FROM test_accuracy\n" +
+			"WHERE svm_id = ? AND iteration = ?"),
+	
+	GET_PARTICIPATION_PACKAGE_RANDOM_IDS(
+			"SELECT DISTINCT package_random_id\n" +
+			"FROM package_participation\n" +
+			"WHERE svm_id = ? AND iteration = ?"),
+	
+	GET_TRAIN_PACKAGE_RANDOM_IDS(
+			"SELECT DISTINCT package_random_id\n" +
+			"FROM package_train\n" +
+			"WHERE svm_id = ? AND iteration = ?"),
+	
+	GET_TEST_PACKAGE_RANDOM_IDS(
+			"SELECT DISTINCT package_random_id\n" +
+			"FROM package_test\n" +
 			"WHERE svm_id = ? AND iteration = ?");
 	
 	public final String query;

@@ -181,6 +181,9 @@ public class Server implements Runnable {
 	private PreparedStatement trainEndTimeUpdateStatement;
 	private PreparedStatement gradientNumParticipantsUpdateStatement;
 	private PreparedStatement testResultsUpdateStatement;
+	private PreparedStatement getParticipationRandomIdsStatement;
+	private PreparedStatement getTrainRandomIdsStatement;
+	private PreparedStatement getTestRandomIdsStatement;
 	
 	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();;
 	
@@ -201,13 +204,14 @@ public class Server implements Runnable {
 			testPackageInsertStatement = SqlQueries
 					.INSERT_INTO_PACKAGE_TEST_DB
 					.createPreparedStatement(dbConnection);
-			// TODO: same for trainPackageInsertStatement, testPackageInsertStatement
+			
 			getTrainConfigurationsStatement = SqlQueries
 					.GET_TRAIN_CONFIGURATIONS
 					.createPreparedStatement(dbConnection);
 			getTestConfigurationsStatement = SqlQueries
 					.GET_TEST_CONFIGURATIONS
 					.createPreparedStatement(dbConnection);
+			
 			getTestAccuracyStatement = SqlQueries
 					.GET_TEST_ACCURACY
 					.createPreparedStatement(dbConnection);
@@ -218,7 +222,6 @@ public class Server implements Runnable {
 			weightsInsertStatement = SqlQueries
 					.INSERT_INTO_WEIGHTS_DB
 					.createPreparedStatement(dbConnection);
-			
 			weightsUpdateStatement = SqlQueries
 					.UPDATE_WEIGHTS
 					.createPreparedStatement(dbConnection);
@@ -237,6 +240,18 @@ public class Server implements Runnable {
 			
 			testResultsUpdateStatement = SqlQueries
 					.UPDATE_TEST_RESULTS
+					.createPreparedStatement(dbConnection);
+			
+			getParticipationRandomIdsStatement = SqlQueries
+					.GET_PARTICIPATION_PACKAGE_RANDOM_IDS
+					.createPreparedStatement(dbConnection);
+			
+			getTrainRandomIdsStatement = SqlQueries
+					.GET_TRAIN_PACKAGE_RANDOM_IDS
+					.createPreparedStatement(dbConnection);
+			
+			getTestRandomIdsStatement = SqlQueries
+					.GET_TEST_PACKAGE_RANDOM_IDS
 					.createPreparedStatement(dbConnection);
 			
 			
@@ -448,9 +463,6 @@ public class Server implements Runnable {
 				latestConfiguration.setIteration(iteration);
 				latestConfiguration.setWeightsToUseForTesting(currWeights);
 				
-				testConfigurations.put(
-						new ServerRequestId(latestConfiguration.getSvmId(), latestConfiguration.getIteration()),
-						latestConfiguration);
 				
 				getTestAccuracyStatement.setInt(1, svmId);
 				getTestAccuracyStatement.setInt(2, iteration);
@@ -478,6 +490,18 @@ public class Server implements Runnable {
 				}
 				
 				alreadyStoredTestResults.close();
+				
+				getTestRandomIdsStatement.setInt(1, svmId);
+				getTestRandomIdsStatement.setInt(2, iteration);
+				ResultSet alreadyReceivedRandomIds = getTestRandomIdsStatement.executeQuery();
+				while (alreadyReceivedRandomIds.next()) {
+					latestConfiguration.addTestPackageRandomId(alreadyReceivedRandomIds.getString(1));
+				}
+				alreadyReceivedRandomIds.close();
+				
+				testConfigurations.put(
+						new ServerRequestId(latestConfiguration.getSvmId(), latestConfiguration.getIteration()),
+						latestConfiguration);
 				
 				lastSeenIteration = -1;
 			}
@@ -597,6 +621,23 @@ public class Server implements Runnable {
 				latestConfiguration.setIteration(iteration);
 				latestConfiguration.setGradientNotNormalized(currGradientNotNormalized);
 				latestConfiguration.setWeightsToUseForTraining(currWeights);
+				
+				getParticipationRandomIdsStatement.setInt(1, svmId);
+				getParticipationRandomIdsStatement.setInt(2, iteration);
+				ResultSet alreadyReceivedParticipationRandomIds = getParticipationRandomIdsStatement.executeQuery();
+				while (alreadyReceivedParticipationRandomIds.next()) {
+					latestConfiguration.addParticipationPackageRandomId(
+							alreadyReceivedParticipationRandomIds.getString(1));
+				}
+				alreadyReceivedParticipationRandomIds.close();
+				
+				getTrainRandomIdsStatement.setInt(1, svmId);
+				getTrainRandomIdsStatement.setInt(2, iteration);
+				ResultSet alreadyReceivedTrainRandomIds = getTrainRandomIdsStatement.executeQuery();
+				while (alreadyReceivedTrainRandomIds.next()) {
+					latestConfiguration.addTrainPackageRandomId(alreadyReceivedTrainRandomIds.getString(1));
+				}
+				alreadyReceivedTrainRandomIds.close();
 				
 				trainConfigurations.put(
 						new ServerRequestId(latestConfiguration.getSvmId(), latestConfiguration.getIteration()),
@@ -776,8 +817,9 @@ public class Server implements Runnable {
 
 					TestWeightsConfiguration configurationToUpdate =
 							testConfigurations.get(new ServerRequestId(svmId, iteration));
-					// otherwise the package is outdated
-					if (configurationToUpdate != null) {
+					// <package not outdated> && <no duplicate>
+					if (configurationToUpdate != null && !configurationToUpdate.hasTestPackageRandomId(packageRandomId)) {
+						configurationToUpdate.addTestPackageRandomId(packageRandomId);
 						testWeightsConfigurationsLock.readLock().lock();
 						try {
 							// male
@@ -810,8 +852,9 @@ public class Server implements Runnable {
 
 						TrainWeightsConfiguration configurationToUpdate =
 								trainConfigurations.get(new ServerRequestId(svmId, iteration));
-						// otherwise the package is outdated
-						if (configurationToUpdate != null) {
+						// <package not outdated> && <no duplicate>
+						if (configurationToUpdate != null && !configurationToUpdate.hasTrainPackageRandomId(packageRandomId)) {
+							configurationToUpdate.addTrainPackageRandomId(packageRandomId);
 							trainWeightsConfigurationsLock.readLock().lock();
 							try {
 								if (value == 0) {
@@ -831,8 +874,9 @@ public class Server implements Runnable {
 
 						TrainWeightsConfiguration configurationToUpdate =
 								trainConfigurations.get(new ServerRequestId(svmId, iteration));
-						// otherwise the package is outdated
-						if (configurationToUpdate != null) {
+						// <package not outdated> && <no duplicate>
+						if (configurationToUpdate != null && !configurationToUpdate.hasParticipationPackageRandomId(packageRandomId)) {
+							configurationToUpdate.addParticipationPackageRandomId(packageRandomId);
 							trainWeightsConfigurationsLock.readLock().lock();
 							try {
 								configurationToUpdate.incrementNumParticipants();

@@ -1,6 +1,8 @@
 package secvm_server;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -21,23 +23,36 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	// AtomicReferenceArray instead of regular array for concurrent updates
 	private AtomicIntegerArray gradientNotNormalized;
 	
+	// The server has already received participation/train packages with these random ids.
+	// If new ones with one of those ids come in, they are most likely duplicates and will
+	// be ignored.
+	private Set<String> participationPackageRandomIdsAlreadyReceived;
+	private Set<String> trainPackageRandomIdsAlreadyReceived;
+	
 	public TrainWeightsConfiguration() {
 		super();
 		numParticipants = new AtomicInteger();
+		participationPackageRandomIdsAlreadyReceived = new HashSet<>();
+		trainPackageRandomIdsAlreadyReceived = new HashSet<>();
 	}
 	
-	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, int diceRollId, List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
-			int minNumberTrainParticipants, int numParticipants, float lambda, List<Integer> trainOutcomesDiceRoll,
-			List<Float> weightsToUseForTraining, AtomicIntegerArray gradientNotNormalized) {
+	public TrainWeightsConfiguration(int svmId, int iteration, int numBins, int diceRollId,
+			List<Float> diceRollProbabilities, List<FeatureVectorProperties> features, int minNumberTrainParticipants,
+			AtomicInteger numParticipants, float lambda, List<Integer> trainOutcomesDiceRoll,
+			List<Float> weightsToUseForTraining, AtomicIntegerArray gradientNotNormalized,
+			Set<String> participationPackageRandomIdsAlreadyReceived,
+			Set<String> trainPackageRandomIdsAlreadyReceived) {
 		super(svmId, iteration, numBins, diceRollId, diceRollProbabilities, features);
 		this.minNumberTrainParticipants = minNumberTrainParticipants;
-		this.numParticipants = new AtomicInteger(numParticipants);
+		this.numParticipants = numParticipants;
 		this.lambda = lambda;
 		this.trainOutcomesDiceRoll = trainOutcomesDiceRoll;
 		this.weightsToUseForTraining = weightsToUseForTraining;
 		this.gradientNotNormalized = gradientNotNormalized;
+		this.participationPackageRandomIdsAlreadyReceived = participationPackageRandomIdsAlreadyReceived;
+		this.trainPackageRandomIdsAlreadyReceived = trainPackageRandomIdsAlreadyReceived;
 	}
-	
+
 	public int getMinNumberTrainParticipants() {
 		return minNumberTrainParticipants;
 	}
@@ -85,7 +100,24 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 	public void setGradientNotNormalized(AtomicIntegerArray gradientNotNormalized) {
 		this.gradientNotNormalized = gradientNotNormalized;
 	}
+	
+	public Set<String> getParticipationPackageRandomIdsAlreadyReceived() {
+		return participationPackageRandomIdsAlreadyReceived;
+	}
 
+	public void setParticipationPackageRandomIdsAlreadyReceived(Set<String> participationPackageRandomIdsAlreadyReceived) {
+		this.participationPackageRandomIdsAlreadyReceived = participationPackageRandomIdsAlreadyReceived;
+	}
+
+	public Set<String> getTrainPackageRandomIdsAlreadyReceived() {
+		return trainPackageRandomIdsAlreadyReceived;
+	}
+
+	public void setTrainPackageRandomIdsAlreadyReceived(Set<String> trainPackageRandomIdsAlreadyReceived) {
+		this.trainPackageRandomIdsAlreadyReceived = trainPackageRandomIdsAlreadyReceived;
+	}
+
+	
 	// as opposed to the other getters/setters, these two work index-based
 	public Integer getGradientNotNormalizedByIndex(int index) {
 		return gradientNotNormalized.get(index);
@@ -108,4 +140,20 @@ public class TrainWeightsConfiguration extends WeightsConfiguration {
 		numParticipants.getAndIncrement();
 	}
 	
+	
+	public void addParticipationPackageRandomId(String id) {
+		participationPackageRandomIdsAlreadyReceived.add(id);
+	}
+	
+	public void addTrainPackageRandomId(String id) {
+		trainPackageRandomIdsAlreadyReceived.add(id);
+	}
+	
+	public boolean hasParticipationPackageRandomId(String id) {
+		return participationPackageRandomIdsAlreadyReceived.contains(id);
+	}
+	
+	public boolean hasTrainPackageRandomId(String id) {
+		return trainPackageRandomIdsAlreadyReceived.contains(id);
+	}
 }

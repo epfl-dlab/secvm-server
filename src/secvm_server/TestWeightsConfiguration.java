@@ -1,6 +1,8 @@
 package secvm_server;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /*
@@ -17,6 +19,11 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	private AtomicInteger maleOverall;
 	private AtomicInteger femaleCorrect;
 	private AtomicInteger maleCorrect;
+	
+	// The server has already received test packages with these random ids.
+	// If new ones with one of those ids come in, they are most likely duplicates and will
+	// be ignored.
+	private Set<String> testPackageRandomIdsAlreadyReceived;
 
 	public TestWeightsConfiguration() {
 		super();
@@ -24,18 +31,23 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 		maleOverall = new AtomicInteger();
 		femaleCorrect = new AtomicInteger();
 		maleCorrect = new AtomicInteger();
+		
+		testPackageRandomIdsAlreadyReceived = new HashSet<>();
 	}
 
-	public TestWeightsConfiguration(List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting,
-			int femaleOverall, int maleOverall, int femaleCorrect,
-			int maleCorrect) {
-		super();
+	public TestWeightsConfiguration(int svmId, int iteration, int numBins, int diceRollId,
+			List<Float> diceRollProbabilities, List<FeatureVectorProperties> features,
+			List<Integer> testOutcomesDiceRoll, List<Float> weightsToUseForTesting, AtomicInteger femaleOverall,
+			AtomicInteger maleOverall, AtomicInteger femaleCorrect, AtomicInteger maleCorrect,
+			Set<String> testPackageRandomIdsAlreadyReceived) {
+		super(svmId, iteration, numBins, diceRollId, diceRollProbabilities, features);
 		this.testOutcomesDiceRoll = testOutcomesDiceRoll;
 		this.weightsToUseForTesting = weightsToUseForTesting;
-		this.femaleOverall = new AtomicInteger(femaleOverall);
-		this.maleOverall = new AtomicInteger(maleOverall);
-		this.femaleCorrect = new AtomicInteger(femaleCorrect);
-		this.maleCorrect = new AtomicInteger(maleCorrect);
+		this.femaleOverall = femaleOverall;
+		this.maleOverall = maleOverall;
+		this.femaleCorrect = femaleCorrect;
+		this.maleCorrect = maleCorrect;
+		this.testPackageRandomIdsAlreadyReceived = testPackageRandomIdsAlreadyReceived;
 	}
 
 	public List<Integer> getTestOutcomesDiceRoll() {
@@ -86,7 +98,15 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 		this.maleCorrect.set(maleCorrect);
 	}
 	
+	public Set<String> getTestPackageRandomIdsAlreadyReceived() {
+		return testPackageRandomIdsAlreadyReceived;
+	}
+
+	public void setTestPackageRandomIdsAlreadyReceived(Set<String> testPackageRandomIdsAlreadyReceived) {
+		this.testPackageRandomIdsAlreadyReceived = testPackageRandomIdsAlreadyReceived;
+	}
 	
+
 	public void incrementFemaleOverall() {
 		femaleOverall.getAndIncrement();
 	}
@@ -101,5 +121,13 @@ public class TestWeightsConfiguration extends WeightsConfiguration {
 	
 	public void incrementMaleCorrect() {
 		maleCorrect.getAndIncrement();
+	}
+	
+	public void addTestPackageRandomId(String id) {
+		testPackageRandomIdsAlreadyReceived.add(id);
+	}
+	
+	public boolean hasTestPackageRandomId(String id) {
+		return testPackageRandomIdsAlreadyReceived.contains(id);
 	}
 }
