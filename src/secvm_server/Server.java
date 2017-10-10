@@ -826,13 +826,13 @@ public class Server implements Runnable {
 							trueGender, predictedGender);
 					packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
 
-					TestWeightsConfiguration configurationToUpdate =
-							testConfigurations.get(new ServerRequestId(svmId, iteration));
-					// <package not outdated> && <no duplicate>
-					if (configurationToUpdate != null && !configurationToUpdate.hasTestPackageRandomId(packageRandomId)) {
-						configurationToUpdate.addTestPackageRandomId(packageRandomId);
-						testWeightsConfigurationsLock.readLock().lock();
-						try {
+					testWeightsConfigurationsLock.readLock().lock();
+					try {
+						TestWeightsConfiguration configurationToUpdate =
+								testConfigurations.get(new ServerRequestId(svmId, iteration));
+						// <package not outdated> && <no duplicate>
+						if (configurationToUpdate != null && !configurationToUpdate.hasTestPackageRandomId(packageRandomId)) {
+							configurationToUpdate.addTestPackageRandomId(packageRandomId);
 							// male
 							if (trueGender == 0) {
 								configurationToUpdate.incrementMaleOverall();
@@ -846,9 +846,9 @@ public class Server implements Runnable {
 									configurationToUpdate.incrementFemaleCorrect();
 								}
 							}
-						} finally {
-							testWeightsConfigurationsLock.readLock().unlock();
 						}
+					} finally {
+						testWeightsConfigurationsLock.readLock().unlock();
 					}
 				} else {
 					JsonElement updateValueJsonElement = objectReceived.get("v");
@@ -861,21 +861,21 @@ public class Server implements Runnable {
 								index, value);
 						packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
 
-						TrainWeightsConfiguration configurationToUpdate =
-								trainConfigurations.get(new ServerRequestId(svmId, iteration));
-						// <package not outdated> && <no duplicate>
-						if (configurationToUpdate != null && !configurationToUpdate.hasTrainPackageRandomId(packageRandomId)) {
-							configurationToUpdate.addTrainPackageRandomId(packageRandomId);
-							trainWeightsConfigurationsLock.readLock().lock();
-							try {
-								if (value == 0) {
-									configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
-								} else {
-									configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
-								}
-							} finally {
-								trainWeightsConfigurationsLock.readLock().unlock();
+						trainWeightsConfigurationsLock.readLock().lock();
+						try {
+							TrainWeightsConfiguration configurationToUpdate =
+									trainConfigurations.get(new ServerRequestId(svmId, iteration));
+							// <package not outdated> && <no duplicate>
+							if (configurationToUpdate != null && !configurationToUpdate.hasTrainPackageRandomId(packageRandomId)) {
+								configurationToUpdate.addTrainPackageRandomId(packageRandomId);
+									if (value == 0) {
+										configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
+									} else {
+										configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+									}
 							}
+						} finally {
+							trainWeightsConfigurationsLock.readLock().unlock();
 						}
 						// participation package
 					} else {
@@ -883,17 +883,17 @@ public class Server implements Runnable {
 								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
 						packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
 
-						TrainWeightsConfiguration configurationToUpdate =
-								trainConfigurations.get(new ServerRequestId(svmId, iteration));
-						// <package not outdated> && <no duplicate>
-						if (configurationToUpdate != null && !configurationToUpdate.hasParticipationPackageRandomId(packageRandomId)) {
-							configurationToUpdate.addParticipationPackageRandomId(packageRandomId);
-							trainWeightsConfigurationsLock.readLock().lock();
-							try {
-								configurationToUpdate.incrementNumParticipants();
-							} finally {
-								trainWeightsConfigurationsLock.readLock().unlock();
+						trainWeightsConfigurationsLock.readLock().lock();
+						try {
+							TrainWeightsConfiguration configurationToUpdate =
+									trainConfigurations.get(new ServerRequestId(svmId, iteration));
+							// <package not outdated> && <no duplicate>
+							if (configurationToUpdate != null && !configurationToUpdate.hasParticipationPackageRandomId(packageRandomId)) {
+								configurationToUpdate.addParticipationPackageRandomId(packageRandomId);
+									configurationToUpdate.incrementNumParticipants();
 							}
+						} finally {
+							trainWeightsConfigurationsLock.readLock().unlock();
 						}
 					}
 				}
