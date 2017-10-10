@@ -94,37 +94,6 @@ public class Server implements Runnable {
 		Thread mainServerThread = new Thread(server);
 		mainServerThread.start();
 		
-//		try {
-//			Thread.sleep(1000);
-//		} catch (InterruptedException e1) {
-//			e1.printStackTrace();
-//		}
-//		boolean blubb = true;
-//		while (blubb) {
-//			try {
-//				Socket s = new Socket("127.0.0.1", PORT);
-//				OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream());
-//				osw.write("{\n" + 
-//						"  \"e\": [1, 3],\n" + 
-//						"  \"p\": \"jkolk\",\n" + 
-//						"  \"l\": 1,\n" + 
-//						"  \"s\": 1\n" + 
-//						"}");
-////				osw.write("{fdslkfd");
-//				osw.flush();
-//				//			System.out.println(s.isConnected());
-//				s.close();
-//				Thread.sleep(1000);
-//			} catch (UnknownHostException e) {
-//				e.printStackTrace();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//
-//		}
-		
 		try (BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in))) {
 			String input = inputReader.readLine();
 			while (!input.equals("stop")) {
@@ -141,17 +110,6 @@ public class Server implements Runnable {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		
-		
-//		List<Float> array = new ArrayList<>();
-//		array.add(2f);
-//		array.add(8.56f);
-//		array.add(123f);
-//		array.add(2.879865f);
-//		String encoded = DataUtils.floatListToBase64(array);
-//		System.out.println(array);
-//		System.out.println(encoded);
-//		System.out.println(DataUtils.base64ToFloatList(encoded));
 	}
 	
 	
@@ -807,7 +765,6 @@ public class Server implements Runnable {
 					new InputStreamReader(httpExchange.getRequestBody()))) {
 				// if the data isn't valid JSON, this will throw a RuntimeException
 				JsonElement jsonElementReceived = jsonParser.parse(socketReader);
-				System.out.println(jsonElementReceived);
 				JsonObject objectReceived = jsonElementReceived.getAsJsonObject();
 				UserPackage packageReceived = null;
 
