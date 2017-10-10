@@ -199,13 +199,13 @@ public class Server implements Runnable {
 			
 			// TODO: maybe make this a bit nicer with a loop and a Map or alike
 			participationPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_PARTICIPATION_DB
+					.INSERT_INTO_PACKAGE_PARTICIPATION_TABLE
 					.createPreparedStatement(dbConnection);
 			trainPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_TRAIN_DB
+					.INSERT_INTO_PACKAGE_TRAIN_TABLE
 					.createPreparedStatement(dbConnection);
 			testPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_TEST_DB
+					.INSERT_INTO_PACKAGE_TEST_TABLE
 					.createPreparedStatement(dbConnection);
 			
 			getTrainConfigurationsStatement = SqlQueries
@@ -219,11 +219,11 @@ public class Server implements Runnable {
 					.GET_TEST_ACCURACY
 					.createPreparedStatement(dbConnection);
 			testAccuracyInsertStatement = SqlQueries
-					.INSERT_INTO_TEST_ACCURACY_DB
+					.INSERT_INTO_TEST_ACCURACY_TABLE
 					.createPreparedStatement(dbConnection);
 			
 			weightsInsertStatement = SqlQueries
-					.INSERT_INTO_WEIGHTS_DB
+					.INSERT_INTO_WEIGHTS_TABLE
 					.createPreparedStatement(dbConnection);
 			weightsUpdateStatement = SqlQueries
 					.UPDATE_WEIGHTS

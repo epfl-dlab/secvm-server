@@ -7,19 +7,19 @@ import java.sql.Statement;
 
 public enum SqlQueries {
 
-	INSERT_INTO_PACKAGE_PARTICIPATION_DB(
+	INSERT_INTO_PACKAGE_PARTICIPATION_TABLE(
 			"INSERT INTO package_participation VALUES (NULL, ?, ?, ?, ?)"),
 	
-	INSERT_INTO_PACKAGE_TRAIN_DB(
+	INSERT_INTO_PACKAGE_TRAIN_TABLE(
 			"INSERT INTO package_train VALUES (NULL, ?, ?, ?, ?, ?, ?)"),
 	
-	INSERT_INTO_PACKAGE_TEST_DB(
+	INSERT_INTO_PACKAGE_TEST_TABLE(
 			"INSERT INTO package_test VALUES (NULL, ?, ?, ?, ?, ?, ?)"),
 	
-	INSERT_INTO_WEIGHTS_DB(
+	INSERT_INTO_WEIGHTS_TABLE(
 			"INSERT INTO weight_vector VALUES(?, ?, ?, NULL, ?, ?, ?)"),
 	
-	INSERT_INTO_TEST_ACCURACY_DB(
+	INSERT_INTO_TEST_ACCURACY_TABLE(
 			"INSERT INTO test_accuracy VALUES(?, ?, ?, ?, ?, ?)"),
 	
 	UPDATE_WEIGHTS(
