@@ -858,6 +858,9 @@ public class Server implements Runnable {
 				packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
 			} catch (IOException e) {
 				e.printStackTrace();
+			// For debugging. Otherwise RuntimeExceptions would go unnoticed.
+			} catch (Exception e) {
+				e.printStackTrace();
 			} finally {
 				httpExchange.close();
 			}
