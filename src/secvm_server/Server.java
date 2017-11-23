@@ -858,6 +858,8 @@ public class Server implements Runnable {
 				packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
 			} catch (IOException e) {
 				e.printStackTrace();
+			} finally {
+				httpExchange.close();
 			}
 		}
 
