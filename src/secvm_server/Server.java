@@ -275,7 +275,8 @@ public class Server implements Runnable {
 						Collections.nCopies(trainConfigurations.size() + testConfigurations.size(), timeLeft).
 							forEach(updatedTimesLeft::add);
 						configurationJson.add("timeLeft", updatedTimesLeft);
-						DataUtils.writeStringToFile(configurationJson.toString(), CONFIGURATION_FILE_PATH);
+						JsonObject wrappedConfigurationJson = DataUtils.wrapJsonInResultObject(configurationJson);
+						DataUtils.writeStringToFile(wrappedConfigurationJson.toString(), CONFIGURATION_FILE_PATH);
 					}
 
 					Thread.sleep(1000);
@@ -620,7 +621,7 @@ public class Server implements Runnable {
 	}
 	
 	/**
-	 * @return the configuration as JSON (as it is written to the configuration file)
+	 * @return the configuration as JSON (as it is written to the configuration file, but not wrapped)
 	 */
 	private JsonObject createConfigurationAndWeightFilesFromWeightsConfigurations(
 			Collection<TrainWeightsConfiguration> trainConfigurations,
@@ -674,10 +675,11 @@ public class Server implements Runnable {
 			++experimentIndex;
 		}
 		
-		JsonObject configJson = (JsonObject) gson.toJsonTree(experimentConfiguration);
-		DataUtils.writeStringToFile(configJson.toString(), CONFIGURATION_FILE_PATH);
+		JsonObject configurationJson = (JsonObject) gson.toJsonTree(experimentConfiguration);
+		JsonObject wrappedConfigurationJson = DataUtils.wrapJsonInResultObject(configurationJson);
+		DataUtils.writeStringToFile(wrappedConfigurationJson.toString(), CONFIGURATION_FILE_PATH);
 		
-		return configJson;
+		return configurationJson;
 	}
 	
 	private void fillExperimentConfigurationEntry(
