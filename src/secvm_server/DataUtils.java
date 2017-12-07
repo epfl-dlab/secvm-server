@@ -135,7 +135,7 @@ public final class DataUtils {
 		}
 	}
 	
-	public static JsonObject wrapJsonInResultObject(JsonObject jsonObject) {
+	public static JsonObject wrapJsonInResultObject(JsonElement jsonObject) {
 		JsonObject wrapped = new JsonObject();
 		wrapped.add("result", jsonObject);
 		return wrapped;

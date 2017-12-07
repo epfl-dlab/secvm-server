@@ -663,8 +663,9 @@ public class Server implements Runnable {
 			
 			WeightsForClients weightsForClients = new WeightsForClients(
 					DataUtils.floatListToBase64(trainConfig.getWeightsToUseForTraining()));
+			JsonObject wrappedWeightsJson = DataUtils.wrapJsonInResultObject(gson.toJsonTree(weightsForClients));
 			DataUtils.writeStringToFile(
-					gson.toJson(weightsForClients),
+					wrappedWeightsJson.toString(),
 					WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
 			
 			++experimentIndex;
@@ -682,8 +683,9 @@ public class Server implements Runnable {
 
 			WeightsForClients weightsForClients = new WeightsForClients(
 					DataUtils.floatListToBase64(testConfig.getWeightsToUseForTesting()));
+			JsonObject wrappedWeightsJson = DataUtils.wrapJsonInResultObject(gson.toJsonTree(weightsForClients));
 			DataUtils.writeStringToFile(
-					gson.toJson(weightsForClients),
+					wrappedWeightsJson.toString(),
 					WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
 			
 			++experimentIndex;
