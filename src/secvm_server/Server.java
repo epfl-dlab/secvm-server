@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
@@ -79,6 +80,14 @@ public class Server implements Runnable {
 	
 	public static final int PORT = 8081;
 	
+	public static final String PACKAGE_RESPONSE;
+	
+	static {
+		JsonObject packageObject = new JsonObject();
+		packageObject.addProperty("result", true);
+		PACKAGE_RESPONSE = packageObject.toString();
+	}
+	
 	public static final int NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING = 2;
 	
 	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 8;
@@ -146,7 +155,7 @@ public class Server implements Runnable {
 	private PreparedStatement getTrainRandomIdsStatement;
 	private PreparedStatement getTestRandomIdsStatement;
 	
-	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();;
+	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 	
 	
 	public Server() {
@@ -864,6 +873,11 @@ public class Server implements Runnable {
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
+                httpExchange.getResponseHeaders().set("Content-Type", "appication/json");
+                httpExchange.sendResponseHeaders(200, PACKAGE_RESPONSE.length());
+                OutputStream httpExchangeOutputStream = httpExchange.getResponseBody();
+                httpExchangeOutputStream.write(PACKAGE_RESPONSE.getBytes());
+                httpExchangeOutputStream.close();
 				httpExchange.close();
 			}
 		}
