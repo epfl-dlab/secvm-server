@@ -75,8 +75,13 @@ public class Server implements Runnable {
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
 	
-	public static final String CONFIGURATION_FILE_PATH = "configuration.json";
-	public static final String WEIGHTS_FILE_BASE_PATH = "http://localhost:8000/weights";
+//	public static final String CONFIGURATION_FILE_PATH = "configuration.json";
+//	public static final String WEIGHTS_FILE_NETWORK_PATH = "http://localhost:8000/";
+//	public static final String WEIGHTS_FILE_LOCAL_PATH = "./";
+
+	public static final String CONFIGURATION_FILE_PATH = "../experiment-configs/configuration.json";
+	public static final String WEIGHTS_FILE_NETWORK_PATH = "http://18.195.194.106:80/";
+	public static final String WEIGHTS_FILE_LOCAL_PATH = "../experiment-configs/";
 	
 	public static final int PORT = 8081;
 	
@@ -660,7 +665,7 @@ public class Server implements Runnable {
 					DataUtils.floatListToBase64(trainConfig.getWeightsToUseForTraining()));
 			DataUtils.writeStringToFile(
 					gson.toJson(weightsForClients),
-					experimentConfiguration.weightVectorUrl[experimentIndex]);
+					WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
 			
 			++experimentIndex;
 		}
@@ -679,9 +684,14 @@ public class Server implements Runnable {
 					DataUtils.floatListToBase64(testConfig.getWeightsToUseForTesting()));
 			DataUtils.writeStringToFile(
 					gson.toJson(weightsForClients),
-					experimentConfiguration.weightVectorUrl[experimentIndex]);
+					WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
 			
 			++experimentIndex;
+		}
+		
+		for (int i = 0; i < experimentConfiguration.weightVectorUrl.length; ++i) {
+			experimentConfiguration.weightVectorUrl[i] =
+					WEIGHTS_FILE_NETWORK_PATH + experimentConfiguration.weightVectorUrl[i];
 		}
 		
 		JsonObject configurationJson = (JsonObject) gson.toJsonTree(experimentConfiguration);
@@ -691,6 +701,10 @@ public class Server implements Runnable {
 		return configurationJson;
 	}
 	
+	/*
+	 * experimentConfiguration.weightVectorUrl only contains the names of the weight vector files,
+	 * not the full paths.
+	 */
 	private void fillExperimentConfigurationEntry(
 			WeightsConfiguration weightsConfiguration, ExperimentConfigurationForClients experimentConfiguration, int experimentIndex) {
 		
@@ -713,7 +727,7 @@ public class Server implements Runnable {
 		}
 		experimentConfiguration.features[experimentIndex] = currFeaturesConfigEntry;
 		
-		experimentConfiguration.weightVectorUrl[experimentIndex] = WEIGHTS_FILE_BASE_PATH + experimentIndex + ".json";
+		experimentConfiguration.weightVectorUrl[experimentIndex] = "weights" + experimentIndex + ".json";
 		
 		experimentConfiguration.timeLeft[experimentIndex] = (int) MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
 	}
