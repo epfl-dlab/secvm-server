@@ -102,16 +102,36 @@ public class Server implements Runnable {
 	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
 	public static final int SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP = 100;
 	
+	/*
+	 * Flags: -l Turn logging on. Turned off by default.
+	 * 
+	 * Command line control while running:
+	 * logging on: Turn logging on.
+	 * logging off: Turn logging off.
+	 * stop: Shut server down. 
+	 */
 	public static void main(String[] args) {
 		
 		Server server = new Server();
+		if (args.length > 0 && args[0].equals("-l")) {
+			server.packageLogging = true;
+		}
 		Thread mainServerThread = new Thread(server);
 		mainServerThread.start();
 		
 		try (BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in))) {
-			String input = inputReader.readLine();
-			while (!input.equals("stop")) {
-				input = inputReader.readLine();
+			while (true) {
+				String input = inputReader.readLine();
+
+				if (input.equals("logging on")) {
+					server.packageLogging = true;
+					System.out.println("logging turned on");
+				} else if (input.equals("logging off")) {
+					server.packageLogging = false;
+					System.out.println("logging turned off");
+				} else if (input.equals("stop")) {
+					break;
+				}
 			}
 			
 			server.stop();
@@ -138,6 +158,9 @@ public class Server implements Runnable {
 	// NullPointerExceptions in the PackageHandler
 	private final ReadWriteLock trainWeightsConfigurationsLock = new ReentrantReadWriteLock(true);
 	private final ReadWriteLock testWeightsConfigurationsLock = new ReentrantReadWriteLock(true);
+	
+	// Should all received packages be logged to the database?
+	private boolean packageLogging = false;
 	
 	Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations;
 	Map<ServerRequestId, TestWeightsConfiguration> testConfigurations;
@@ -805,10 +828,12 @@ public class Server implements Runnable {
 				if (predictedGenderJsonElement != null) {
 					int trueGender = objectReceived.get("l").getAsInt();
 					int predictedGender = predictedGenderJsonElement.getAsInt();
-					packageReceived = new TestPackage(
-							svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
-							trueGender, predictedGender);
-					packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
+					if (packageLogging) {
+						packageReceived = new TestPackage(
+								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+								trueGender, predictedGender);
+						packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
+					}
 
 					testWeightsConfigurationsLock.readLock().lock();
 					try {
@@ -840,10 +865,12 @@ public class Server implements Runnable {
 					if (updateValueJsonElement != null) {
 						int index = objectReceived.get("i").getAsInt();
 						int value = updateValueJsonElement.getAsInt();
-						packageReceived = new TrainPackage(
-								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
-								index, value);
-						packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
+						if (packageLogging) {
+							packageReceived = new TrainPackage(
+									svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
+									index, value);
+							packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
+						}
 
 						trainWeightsConfigurationsLock.readLock().lock();
 						try {
@@ -863,9 +890,11 @@ public class Server implements Runnable {
 						}
 						// participation package
 					} else {
-						packageReceived = new ParticipationPackage(
-								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
-						packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
+						if (packageLogging) {
+							packageReceived = new ParticipationPackage(
+									svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
+							packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
+						}
 
 						trainWeightsConfigurationsLock.readLock().lock();
 						try {
@@ -882,7 +911,9 @@ public class Server implements Runnable {
 					}
 				}
 
-				packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
+				if (packageLogging) {
+					packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			// For debugging. Otherwise RuntimeExceptions would go unnoticed.
