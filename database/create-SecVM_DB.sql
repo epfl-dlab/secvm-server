@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `SecVM_DB`.`weight_vector` (
   `training_start_time` TIMESTAMP(3) NOT NULL,
   `training_end_time` TIMESTAMP(3) NULL,
   `num_participants` INT UNSIGNED NOT NULL,
-  `weights` TEXT NOT NULL,
+  `weights` LONGTEXT NOT NULL,
   `gradient_not_normalized` TEXT,
   PRIMARY KEY (`svm_id`, `iteration`),
   INDEX `fk_weight_vector_smv_idx` (`svm_id` ASC),
