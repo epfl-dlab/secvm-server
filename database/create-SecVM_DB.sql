@@ -59,8 +59,8 @@ COMMENT = 'svm_id: AUTOINCREMENT\ntrain_outcomes_dice_roll, test_outcomes_dice_r
 CREATE TABLE IF NOT EXISTS `SecVM_DB`.`weight_vector` (
   `svm_id` INT UNSIGNED NOT NULL,
   `iteration` INT UNSIGNED NOT NULL,
-  `training_start_time` TIMESTAMP(3) NOT NULL,
-  `training_end_time` TIMESTAMP(3) NULL,
+  `training_start_time` DATETIME(3) NOT NULL,
+  `training_end_time` DATETIME(3) NULL,
   `num_participants` INT UNSIGNED NOT NULL,
   `weights` LONGTEXT NOT NULL,
   `gradient_not_normalized` LONGTEXT,
