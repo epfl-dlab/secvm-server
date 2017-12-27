@@ -577,6 +577,7 @@ public class Server implements Runnable {
 				latestConfiguration.setTrainOutcomesDiceRoll(trainOutcomes);
 				latestConfiguration.addFeatures(features);
 				latestConfiguration.setMinNumberTrainParticipants(minNumberTrainParticipants);
+				latestConfiguration.setNumParticipants(numParticipants);
 			
 				// the minimum participant quota for the last weight vector has been reached
 				// or we are at the initial weight vector; create a new one
