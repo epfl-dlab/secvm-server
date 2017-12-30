@@ -1,4 +1,4 @@
-package secvm_server;
+package com.cliqz.secvmserver;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;

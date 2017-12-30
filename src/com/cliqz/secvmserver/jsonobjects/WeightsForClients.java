@@ -1,4 +1,4 @@
-package secvm_server.json_objects;
+package com.cliqz.secvmserver.jsonobjects;
 
 public class WeightsForClients {
 	public String weights;

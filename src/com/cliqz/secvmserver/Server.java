@@ -1,4 +1,4 @@
-package secvm_server;
+package com.cliqz.secvmserver;
 
 import java.beans.FeatureDescriptor;
 import java.io.BufferedReader;
@@ -52,6 +52,9 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.cliqz.secvmserver.WeightsConfiguration.FeatureVectorProperties;
+import com.cliqz.secvmserver.jsonobjects.ExperimentConfigurationForClients;
+import com.cliqz.secvmserver.jsonobjects.WeightsForClients;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -63,10 +66,6 @@ import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-
-import secvm_server.WeightsConfiguration.FeatureVectorProperties;
-import secvm_server.json_objects.ExperimentConfigurationForClients;
-import secvm_server.json_objects.WeightsForClients;
 
 public class Server implements Runnable {
 	

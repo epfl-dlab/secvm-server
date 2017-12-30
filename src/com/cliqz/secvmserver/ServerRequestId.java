@@ -1,4 +1,4 @@
-package secvm_server;
+package com.cliqz.secvmserver;
 
 /**
  * Indicates to which request from the server (i.e. to which svm)

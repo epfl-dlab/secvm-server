@@ -1,4 +1,4 @@
-package secvm_server.json_objects;
+package com.cliqz.secvmserver.jsonobjects;
 
 // TODO: Maybe write a custom JsonSerializer to exclude hosts or titleWords from Features
 // if they are not used.

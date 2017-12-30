@@ -1,4 +1,4 @@
-package secvm_server;
+package com.cliqz.secvmserver;
 
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
@@ -13,10 +13,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
+import com.cliqz.secvmserver.jsonobjects.WeightsForClients;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-
-import secvm_server.json_objects.WeightsForClients;
 
 public final class DataUtils {
 	
