@@ -78,9 +78,9 @@ public class Server implements Runnable {
 //	public static final String WEIGHTS_FILE_NETWORK_PATH = "http://localhost:8000/";
 //	public static final String WEIGHTS_FILE_LOCAL_PATH = "./";
 
-	public static final String CONFIGURATION_FILE_PATH = "../experiment-configs/configuration.json";
+	public static final String CONFIGURATION_FILE_PATH = "./experiment-configs/configuration.json";
 	public static final String WEIGHTS_FILE_NETWORK_PATH = "https://svm.cliqz.com/";
-	public static final String WEIGHTS_FILE_LOCAL_PATH = "../experiment-configs/";
+	public static final String WEIGHTS_FILE_LOCAL_PATH = "./experiment-configs/";
 	
 	public static final int PORT = 8081;
 	
