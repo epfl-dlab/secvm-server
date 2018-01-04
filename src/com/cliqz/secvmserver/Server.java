@@ -236,10 +236,10 @@ public class Server implements Runnable {
 					int timeLeft = (int) (deadline - System.currentTimeMillis());
 					// update the time that is left for the clients to send their updates
 					if (timeLeft > 0) {
+						int numSvms = configurationJson.getAsJsonArray("timeLeft").size();
 						configurationJson.remove("timeLeft");
 						JsonArray updatedTimesLeft = new JsonArray();
-						Collections.nCopies(trainConfigurations.size() + testConfigurations.size(), timeLeft).
-							forEach(updatedTimesLeft::add);
+						Collections.nCopies(numSvms, timeLeft).forEach(updatedTimesLeft::add);
 						configurationJson.add("timeLeft", updatedTimesLeft);
 						JsonObject wrappedConfigurationJson = DataUtils.wrapJsonInResultObject(configurationJson);
 						DataUtils.writeStringToFile(wrappedConfigurationJson.toString(), CONFIGURATION_FILE_PATH);
@@ -642,20 +642,32 @@ public class Server implements Runnable {
 			Collection<TrainWeightsConfiguration> trainConfigurations,
 			Collection<TestWeightsConfiguration> testConfigurations) {
 		
-		// TODO: If experimentId of some test and train configuration are the same,
-		// merge them and keep only one, i.e., replace null in diceRolls by testOutcomesDiceRoll.
+		// to determine how many unique svmIds we have
+		Set<Integer> svmIds = new HashSet<>();
+		for (TrainWeightsConfiguration trainConfig : trainConfigurations) {
+			svmIds.add(trainConfig.getSvmId());
+		}
+		for (TestWeightsConfiguration testConfig : testConfigurations) {
+			svmIds.add(testConfig.getSvmId());
+		}
+		int numSvms = svmIds.size();
 
 		// to number the weight vector files
 		int experimentIndex = 0;
-		int numExperiments = trainConfigurations.size() + testConfigurations.size();
 		ExperimentConfigurationForClients experimentConfiguration = new ExperimentConfigurationForClients();
-		experimentConfiguration.experimentId = new ExperimentConfigurationForClients.ExperimentId[numExperiments];
-		experimentConfiguration.features = new ExperimentConfigurationForClients.Features[numExperiments];
-		experimentConfiguration.diceRolls = new ExperimentConfigurationForClients.DiceRolls[numExperiments];
-		experimentConfiguration.weightVectorUrl = new String[numExperiments];
-		experimentConfiguration.timeLeft = new int[numExperiments];
+		experimentConfiguration.experimentId = new ExperimentConfigurationForClients.ExperimentId[numSvms];
+		experimentConfiguration.features = new ExperimentConfigurationForClients.Features[numSvms];
+		experimentConfiguration.diceRolls = new ExperimentConfigurationForClients.DiceRolls[numSvms];
+		experimentConfiguration.weightVectorUrl = new String[numSvms];
+		experimentConfiguration.timeLeft = new int[numSvms];
+		
+		// svmIds we have already encountered in trainConfigurations and the index where they have been
+		// put into the experimentConfiguration arrays
+		Map<Integer, Integer> svmIdToIndex = new HashMap<>();
 		
 		for (TrainWeightsConfiguration trainConfig : trainConfigurations) {
+			svmIdToIndex.put(trainConfig.getSvmId(), experimentIndex);
+			
 			fillExperimentConfigurationEntry(trainConfig, experimentConfiguration, experimentIndex);
 			
 			experimentConfiguration.diceRolls[experimentIndex] =
@@ -676,23 +688,32 @@ public class Server implements Runnable {
 		}
 		
 		for (TestWeightsConfiguration testConfig : testConfigurations) {
-			fillExperimentConfigurationEntry(testConfig, experimentConfiguration, experimentIndex);
-			
-			experimentConfiguration.diceRolls[experimentIndex] =
-					new ExperimentConfigurationForClients.DiceRolls(
-							String.valueOf(testConfig.getDiceRollId()),
-							DataUtils.floatListToArray(testConfig.getDiceRollProbabilities()),
-							null,
-							DataUtils.intListToArray(testConfig.getTestOutcomesDiceRoll()));
-
-			WeightsForClients weightsForClients = new WeightsForClients(
-					DataUtils.floatListToBase64(testConfig.getWeightsToUseForTesting()));
-			JsonObject wrappedWeightsJson = DataUtils.wrapJsonInResultObject(gson.toJsonTree(weightsForClients));
-			DataUtils.writeStringToFile(
-					wrappedWeightsJson.toString(),
-					WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
-			
-			++experimentIndex;
+			Integer alreadyFilledIndex;
+			// The entry has already been filled while looping over trainConfigurations.
+			// We just need to add testOutcomeDiceRoll.
+			if ((alreadyFilledIndex = svmIdToIndex.get(testConfig.getSvmId())) != null) {
+				experimentConfiguration.diceRolls[alreadyFilledIndex].test =
+						DataUtils.intListToArray(testConfig.getTestOutcomesDiceRoll());
+			} else {
+				
+				fillExperimentConfigurationEntry(testConfig, experimentConfiguration, experimentIndex);
+				
+				experimentConfiguration.diceRolls[experimentIndex] =
+						new ExperimentConfigurationForClients.DiceRolls(
+								String.valueOf(testConfig.getDiceRollId()),
+								DataUtils.floatListToArray(testConfig.getDiceRollProbabilities()),
+								null,
+								DataUtils.intListToArray(testConfig.getTestOutcomesDiceRoll()));
+	
+				WeightsForClients weightsForClients = new WeightsForClients(
+						DataUtils.floatListToBase64(testConfig.getWeightsToUseForTesting()));
+				JsonObject wrappedWeightsJson = DataUtils.wrapJsonInResultObject(gson.toJsonTree(weightsForClients));
+				DataUtils.writeStringToFile(
+						wrappedWeightsJson.toString(),
+						WEIGHTS_FILE_LOCAL_PATH + experimentConfiguration.weightVectorUrl[experimentIndex]);
+				
+				++experimentIndex;
+			}
 		}
 		
 		for (int i = 0; i < experimentConfiguration.weightVectorUrl.length; ++i) {
@@ -818,6 +839,9 @@ public class Server implements Runnable {
 				JsonElement predictedGenderJsonElement = objectReceived.get("s");
 				// test package
 				if (predictedGenderJsonElement != null) {
+					// The client sends the iteration of the weight vector which is currently being trained,
+					// but actually tests the previous one.
+					--iteration;
 					int trueGender = objectReceived.get("l").getAsInt();
 					int predictedGender = predictedGenderJsonElement.getAsInt();
 					if (packageLogging && dbConnection != null) {
