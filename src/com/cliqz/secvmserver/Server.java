@@ -553,7 +553,6 @@ public class Server implements Runnable {
 				latestConfiguration.setTrainOutcomesDiceRoll(trainOutcomes);
 				latestConfiguration.addFeatures(features);
 				latestConfiguration.setMinNumberTrainParticipants(minNumberTrainParticipants);
-				latestConfiguration.setNumParticipants(numParticipants);
 			
 				// the minimum participant quota for the last weight vector has been reached
 				// or we are at the initial weight vector; create a new one
@@ -592,6 +591,7 @@ public class Server implements Runnable {
 					// *********************************
 					
 					++iteration;
+					numParticipants = 0;
 					
 					weightsInsertStatement.setInt(1, latestConfiguration.getSvmId());
 					weightsInsertStatement.setInt(2, iteration);
@@ -605,6 +605,7 @@ public class Server implements Runnable {
 				latestConfiguration.setIteration(iteration);
 				latestConfiguration.setGradientNotNormalized(currGradientNotNormalized);
 				latestConfiguration.setWeightsToUseForTraining(currWeights);
+				latestConfiguration.setNumParticipants(numParticipants);
 				
 				getParticipationRandomIdsStatement.setInt(1, svmId);
 				getParticipationRandomIdsStatement.setInt(2, iteration);
@@ -640,6 +641,9 @@ public class Server implements Runnable {
 	private JsonObject createConfigurationAndWeightFilesFromWeightsConfigurations(
 			Collection<TrainWeightsConfiguration> trainConfigurations,
 			Collection<TestWeightsConfiguration> testConfigurations) {
+		
+		// TODO: If experimentId of some test and train configuration are the same,
+		// merge them and keep only one, i.e., replace null in diceRolls by testOutcomesDiceRoll.
 
 		// to number the weight vector files
 		int experimentIndex = 0;
