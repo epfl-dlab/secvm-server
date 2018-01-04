@@ -33,6 +33,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLTimeoutException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,6 +53,8 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.sql.DataSource;
+
 import com.cliqz.secvmserver.WeightsConfiguration.FeatureVectorProperties;
 import com.cliqz.secvmserver.jsonobjects.ExperimentConfigurationForClients;
 import com.cliqz.secvmserver.jsonobjects.WeightsForClients;
@@ -66,10 +69,12 @@ import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 public class Server implements Runnable {
 	
-	public static final String DB_USER = "java";
+	public static final String HIKARI_CONFIG_FILE_PATH = "config/hikari.properties";
 	public static final String DB_PASSWORD = "java";
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
@@ -78,9 +83,9 @@ public class Server implements Runnable {
 //	public static final String WEIGHTS_FILE_NETWORK_PATH = "http://localhost:8000/";
 //	public static final String WEIGHTS_FILE_LOCAL_PATH = "./";
 
-	public static final String CONFIGURATION_FILE_PATH = "./experiment-configs/configuration.json";
+	public static final String CONFIGURATION_FILE_PATH = "experiment-configs/configuration.json";
 	public static final String WEIGHTS_FILE_NETWORK_PATH = "https://svm.cliqz.com/";
-	public static final String WEIGHTS_FILE_LOCAL_PATH = "./experiment-configs/";
+	public static final String WEIGHTS_FILE_LOCAL_PATH = "experiment-configs/";
 	
 	public static final int PORT = 8081;
 	
@@ -137,10 +142,14 @@ public class Server implements Runnable {
 			try {
 				mainServerThread.join();
 			} catch (InterruptedException e) {
+				// TODO: log to db
+				// TODO: remove for production
 				e.printStackTrace();
 			}
 			System.out.println("stopped");
 		} catch (IOException e1) {
+			// TODO: log to db
+			// TODO: remove for production
 			e1.printStackTrace();
 		}
 	}
@@ -164,23 +173,8 @@ public class Server implements Runnable {
 	Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations;
 	Map<ServerRequestId, TestWeightsConfiguration> testConfigurations;
 	
-	private Connection dbConnection;
-	private PreparedStatement participationPackageInsertStatement;
-	private PreparedStatement trainPackageInsertStatement;
-	private PreparedStatement testPackageInsertStatement;
-	private PreparedStatement getTrainConfigurationsStatement;
-	private PreparedStatement getTestConfigurationsStatement;
-	private PreparedStatement getTestAccuracyStatement;
-	private PreparedStatement testAccuracyInsertStatement;
-	private PreparedStatement weightsInsertStatement;
-	private PreparedStatement weightsUpdateStatement;
-	private PreparedStatement gradientUpdateStatement;
-	private PreparedStatement trainEndTimeUpdateStatement;
-	private PreparedStatement gradientNumParticipantsUpdateStatement;
-	private PreparedStatement testResultsUpdateStatement;
-	private PreparedStatement getParticipationRandomIdsStatement;
-	private PreparedStatement getTrainRandomIdsStatement;
-	private PreparedStatement getTestRandomIdsStatement;
+	// Not using interface DataSource because only HikariDataSource offers close().
+	private HikariDataSource dbDataSource;
 	
 	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 	
@@ -188,79 +182,15 @@ public class Server implements Runnable {
 	public Server() {
 		jsonParser = new JsonParser();
 		
-		try {
-			dbConnection = establishDbConnection(DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME);
-			
-			// TODO: maybe make this a bit nicer with a loop and a Map or alike
-			participationPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_PARTICIPATION_TABLE
-					.createPreparedStatement(dbConnection);
-			trainPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_TRAIN_TABLE
-					.createPreparedStatement(dbConnection);
-			testPackageInsertStatement = SqlQueries
-					.INSERT_INTO_PACKAGE_TEST_TABLE
-					.createPreparedStatement(dbConnection);
-			
-			getTrainConfigurationsStatement = SqlQueries
-					.GET_TRAIN_CONFIGURATIONS
-					.createPreparedStatement(dbConnection);
-			getTestConfigurationsStatement = SqlQueries
-					.GET_TEST_CONFIGURATIONS
-					.createPreparedStatement(dbConnection);
-			
-			getTestAccuracyStatement = SqlQueries
-					.GET_TEST_ACCURACY
-					.createPreparedStatement(dbConnection);
-			testAccuracyInsertStatement = SqlQueries
-					.INSERT_INTO_TEST_ACCURACY_TABLE
-					.createPreparedStatement(dbConnection);
-			
-			weightsInsertStatement = SqlQueries
-					.INSERT_INTO_WEIGHTS_TABLE
-					.createPreparedStatement(dbConnection);
-			weightsUpdateStatement = SqlQueries
-					.UPDATE_WEIGHTS
-					.createPreparedStatement(dbConnection);
-			
-			gradientUpdateStatement = SqlQueries
-					.UPDATE_GRADIENT
-					.createPreparedStatement(dbConnection);
-			
-			trainEndTimeUpdateStatement = SqlQueries
-					.UPDATE_TRAIN_END_TIME
-					.createPreparedStatement(dbConnection);
-			
-			gradientNumParticipantsUpdateStatement = SqlQueries
-					.UPDATE_GRADIENT_NUM_PARTICIPANTS
-					.createPreparedStatement(dbConnection);
-			
-			testResultsUpdateStatement = SqlQueries
-					.UPDATE_TEST_RESULTS
-					.createPreparedStatement(dbConnection);
-			
-			getParticipationRandomIdsStatement = SqlQueries
-					.GET_PARTICIPATION_PACKAGE_RANDOM_IDS
-					.createPreparedStatement(dbConnection);
-			
-			getTrainRandomIdsStatement = SqlQueries
-					.GET_TRAIN_PACKAGE_RANDOM_IDS
-					.createPreparedStatement(dbConnection);
-			
-			getTestRandomIdsStatement = SqlQueries
-					.GET_TEST_PACKAGE_RANDOM_IDS
-					.createPreparedStatement(dbConnection);
-			
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		HikariConfig hikariConfig = new HikariConfig(HIKARI_CONFIG_FILE_PATH);
+		dbDataSource = new HikariDataSource(hikariConfig);
 	}
 	
 	@Override
 	public void run() {
-		try {
+		try (// This Connection may only be used by the main thread.
+			Connection mainThreadDbConnection = dbDataSource.getConnection()) {
+			
 			// TODO: maybe specify the maximum number of queued connections (second parameter)
 			HttpServer httpServer = HttpServer.create(new InetSocketAddress(PORT), 0);
 			
@@ -279,13 +209,13 @@ public class Server implements Runnable {
 				// makes to the db. *****
 				trainWeightsConfigurationsLock.writeLock().lock();
 				try {
-					trainConfigurations = loadTrainConfigurations();
+					trainConfigurations = loadTrainConfigurations(mainThreadDbConnection);
 				} finally {
 					trainWeightsConfigurationsLock.writeLock().unlock();
 				}
 				testWeightsConfigurationsLock.writeLock().lock();
 				try {
-					testConfigurations = loadTestConfigurations();
+					testConfigurations = loadTestConfigurations(mainThreadDbConnection);
 				} finally {
 					testWeightsConfigurationsLock.writeLock().unlock();
 				}
@@ -326,11 +256,11 @@ public class Server implements Runnable {
 				// loadTrainConfigurations() andloadTestConfigurations(). 
 				
 				for (TrainWeightsConfiguration trainConfig : trainConfigurations.values()) {
-					updateWeightVectorTableAfterTraining(trainConfig);
+					updateWeightVectorTableAfterTraining(trainConfig, mainThreadDbConnection);
 				}
 				
 				for (TestWeightsConfiguration testConfig : testConfigurations.values()) {
-					updateTestAccuracyTableAfterTesting(testConfig);
+					updateTestAccuracyTableAfterTesting(testConfig, mainThreadDbConnection);
 				}
 			}
 			
@@ -354,6 +284,8 @@ public class Server implements Runnable {
 						break;
 					}
 				} catch (InterruptedException e) {
+					// TODO: log to db
+					// TODO: remove for production
 					e.printStackTrace();
 					break;
 				}
@@ -368,15 +300,23 @@ public class Server implements Runnable {
 						break;
 					}
 				} catch (InterruptedException e) {
+					// TODO: log to db
+					// TODO: remove for production
 					e.printStackTrace();
 					break;
 				}
 			}
 		} catch (IOException | SQLException e) {
+			// TODO: log to db
+			// TODO: remove for production
 			e.printStackTrace();
 		} catch (InterruptedException e) {
+			// TODO: log to db
+			// TODO: remove for production
 			e.printStackTrace();
 		}
+		
+		dbDataSource.close();
 		
 		
 		// continue shutting down
@@ -385,13 +325,9 @@ public class Server implements Runnable {
 		try {
 			Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
 		} catch (IOException e1) {
+			// TODO: log to db
+			// TODO: remove for production
 			e1.printStackTrace();
-		}
-		
-		try {
-			dbConnection.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
 		}
 	}
 	
@@ -399,8 +335,24 @@ public class Server implements Runnable {
 		stop = true;
 	}
 	
-	private Map<ServerRequestId, TestWeightsConfiguration> loadTestConfigurations() throws SQLException {
+	private Map<ServerRequestId, TestWeightsConfiguration> loadTestConfigurations(Connection dbConnection)
+			throws SQLException {
+		
+		PreparedStatement getTestConfigurationsStatement = SqlQueries
+				.GET_TEST_CONFIGURATIONS
+				.createPreparedStatement(dbConnection);
+		PreparedStatement getTestAccuracyStatement = SqlQueries
+				.GET_TEST_ACCURACY
+				.createPreparedStatement(dbConnection);
+		PreparedStatement testAccuracyInsertStatement = SqlQueries
+				.INSERT_INTO_TEST_ACCURACY_TABLE
+				.createPreparedStatement(dbConnection);
+		PreparedStatement getTestRandomIdsStatement = SqlQueries
+				.GET_TEST_PACKAGE_RANDOM_IDS
+				.createPreparedStatement(dbConnection);
+		
 		Map<ServerRequestId, TestWeightsConfiguration> testConfigurations = new HashMap<>();
+		
 		// includes past iterations that are not interesting to us anymore
 		ResultSet allTestConfigurations = getTestConfigurationsStatement.executeQuery();
 
@@ -518,8 +470,33 @@ public class Server implements Runnable {
 		return testConfigurations;
 	}
 	
-	private Map<ServerRequestId, TrainWeightsConfiguration> loadTrainConfigurations() throws SQLException {
+	private Map<ServerRequestId, TrainWeightsConfiguration> loadTrainConfigurations(Connection dbConnection)
+			throws SQLException {
+		
+		PreparedStatement getTrainConfigurationsStatement = SqlQueries
+				.GET_TRAIN_CONFIGURATIONS
+				.createPreparedStatement(dbConnection);
+		PreparedStatement weightsUpdateStatement = SqlQueries
+				.UPDATE_WEIGHTS
+				.createPreparedStatement(dbConnection);
+		PreparedStatement gradientUpdateStatement = SqlQueries
+				.UPDATE_GRADIENT
+				.createPreparedStatement(dbConnection);
+		PreparedStatement trainEndTimeUpdateStatement = SqlQueries
+				.UPDATE_TRAIN_END_TIME
+				.createPreparedStatement(dbConnection);
+		PreparedStatement weightsInsertStatement = SqlQueries
+				.INSERT_INTO_WEIGHTS_TABLE
+				.createPreparedStatement(dbConnection);
+		PreparedStatement getParticipationRandomIdsStatement = SqlQueries
+				.GET_PARTICIPATION_PACKAGE_RANDOM_IDS
+				.createPreparedStatement(dbConnection);
+		PreparedStatement getTrainRandomIdsStatement = SqlQueries
+				.GET_TRAIN_PACKAGE_RANDOM_IDS
+				.createPreparedStatement(dbConnection);
+		
 		Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations = new HashMap<>();
+		
 		// includes past iterations that are not interesting to us anymore
 		ResultSet allTrainConfigurations = getTrainConfigurationsStatement.executeQuery();
 
@@ -757,7 +734,13 @@ public class Server implements Runnable {
 		experimentConfiguration.timeLeft[experimentIndex] = (int) MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES;
 	}
 	
-	private void updateWeightVectorTableAfterTraining (TrainWeightsConfiguration trainConfig) throws SQLException {
+	private void updateWeightVectorTableAfterTraining (TrainWeightsConfiguration trainConfig, Connection dbConnection)
+			throws SQLException {
+		PreparedStatement gradientNumParticipantsUpdateStatement =
+				SqlQueries
+				.UPDATE_GRADIENT_NUM_PARTICIPANTS
+				.createPreparedStatement(dbConnection);
+		
 		gradientNumParticipantsUpdateStatement.setString(1,
 				DataUtils.atomicIntegerArrayToBase64(
 						trainConfig.getGradientNotNormalized()));
@@ -770,7 +753,12 @@ public class Server implements Runnable {
 		gradientNumParticipantsUpdateStatement.executeUpdate();
 	}
 	
-	private void updateTestAccuracyTableAfterTesting (TestWeightsConfiguration testConfig) throws SQLException {
+	private void updateTestAccuracyTableAfterTesting (TestWeightsConfiguration testConfig, Connection dbConnection)
+			throws SQLException {
+		PreparedStatement testResultsUpdateStatement = SqlQueries
+				.UPDATE_TEST_RESULTS
+				.createPreparedStatement(dbConnection);
+		
 		testResultsUpdateStatement.setInt(1,
 				testConfig.getFemaleOverall());
 		testResultsUpdateStatement.setInt(2,
@@ -786,17 +774,6 @@ public class Server implements Runnable {
 		testResultsUpdateStatement.executeUpdate();
 	}
 	
-	private Connection establishDbConnection(
-			String user, String password, String serverName, String dbName)
-					throws SQLException {
-		MysqlDataSource dataSource = new MysqlDataSource();
-		dataSource.setUser(user);
-		dataSource.setPassword(password);
-		dataSource.setServerName(serverName);
-		dataSource.setDatabaseName(dbName);
-		return dataSource.getConnection();
-	}
-
 	
 	class PackageHandler implements HttpHandler {
 		
@@ -811,12 +788,23 @@ public class Server implements Runnable {
 		// Exceptions) will be thrown and the package will be discarded.
 		@Override
 		public void handle(HttpExchange httpExchange) throws IOException {
+			Connection dbConnection = null;
 			try (BufferedReader socketReader = new BufferedReader(
 					new InputStreamReader(httpExchange.getRequestBody()))) {
 				// if the data isn't valid JSON, this will throw a RuntimeException
 				JsonElement jsonElementReceived = jsonParser.parse(socketReader);
 				JsonObject objectReceived = jsonElementReceived.getAsJsonObject();
 				UserPackage packageReceived = null;
+				if (packageLogging) {
+					// Separate try block since we want the update to still be executed
+					// even if the logging fails.
+					try {
+						dbConnection = dbDataSource.getConnection();
+					} catch (SQLException e){
+						// TODO: log to db
+					}
+				}
+				PreparedStatement packageInsertStatement = null;
 
 				JsonArray requestIdArray = objectReceived.getAsJsonArray("e");
 				int svmId = requestIdArray.get(0).getAsInt();
@@ -828,11 +816,18 @@ public class Server implements Runnable {
 				if (predictedGenderJsonElement != null) {
 					int trueGender = objectReceived.get("l").getAsInt();
 					int predictedGender = predictedGenderJsonElement.getAsInt();
-					if (packageLogging) {
+					if (packageLogging && dbConnection != null) {
 						packageReceived = new TestPackage(
 								svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 								trueGender, predictedGender);
-						packageReceived.setAssociatedDbStatement(testPackageInsertStatement);
+						try {
+							packageInsertStatement = SqlQueries
+									.INSERT_INTO_PACKAGE_TEST_TABLE
+									.createPreparedStatement(dbConnection);
+							packageReceived.setAssociatedDbStatement(packageInsertStatement);
+						} catch (SQLException e) {
+							// TODO: log to db
+						}
 					}
 
 					testWeightsConfigurationsLock.readLock().lock();
@@ -865,11 +860,18 @@ public class Server implements Runnable {
 					if (updateValueJsonElement != null) {
 						int index = objectReceived.get("i").getAsInt();
 						int value = updateValueJsonElement.getAsInt();
-						if (packageLogging) {
+						if (packageLogging && dbConnection != null) {
 							packageReceived = new TrainPackage(
 									svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()),
 									index, value);
-							packageReceived.setAssociatedDbStatement(trainPackageInsertStatement);
+							try {
+								packageInsertStatement = SqlQueries
+										.INSERT_INTO_PACKAGE_TRAIN_TABLE
+										.createPreparedStatement(dbConnection);
+								packageReceived.setAssociatedDbStatement(packageInsertStatement);
+							} catch (SQLException e) {
+								// TODO: log to db
+							}
 						}
 
 						trainWeightsConfigurationsLock.readLock().lock();
@@ -890,10 +892,17 @@ public class Server implements Runnable {
 						}
 						// participation package
 					} else {
-						if (packageLogging) {
+						if (packageLogging && dbConnection != null) {
 							packageReceived = new ParticipationPackage(
 									svmId, iteration, packageRandomId, new Timestamp(System.currentTimeMillis()));
-							packageReceived.setAssociatedDbStatement(participationPackageInsertStatement);
+							try {
+								packageInsertStatement = SqlQueries
+										.INSERT_INTO_PACKAGE_PARTICIPATION_TABLE
+										.createPreparedStatement(dbConnection);
+								packageReceived.setAssociatedDbStatement(packageInsertStatement);
+							} catch (SQLException e) {
+								// TODO: log to db
+							}
 						}
 
 						trainWeightsConfigurationsLock.readLock().lock();
@@ -911,15 +920,26 @@ public class Server implements Runnable {
 					}
 				}
 
-				if (packageLogging) {
+				if (packageLogging && packageInsertStatement != null) {
 					packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				// TODO: log to db
 			// For debugging. Otherwise RuntimeExceptions would go unnoticed.
 			} catch (Exception e) {
+				// TODO: log to db
+				// TODO: remove for production
 				e.printStackTrace();
 			} finally {
+				if (dbConnection != null) {
+					try {
+						dbConnection.close();
+					} catch (SQLException e) {
+						// TODO: log to db
+					}
+				}
+				
+				// Confirm that a package has arrived.
                 httpExchange.getResponseHeaders().set("Content-Type", "appication/json");
                 httpExchange.sendResponseHeaders(200, PACKAGE_RESPONSE.length());
                 OutputStream httpExchangeOutputStream = httpExchange.getResponseBody();
