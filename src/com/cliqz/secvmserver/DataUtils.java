@@ -9,11 +9,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
-import com.cliqz.secvmserver.jsonobjects.WeightsForClients;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
