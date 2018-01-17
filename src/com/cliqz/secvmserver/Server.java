@@ -113,14 +113,10 @@ public class Server implements Runnable {
 				mainServerThread.join();
 			} catch (InterruptedException e) {
 				// TODO: log to db
-				// TODO: remove for production
-				e.printStackTrace();
 			}
 			System.out.println("stopped");
 		} catch (IOException e1) {
 			// TODO: log to db
-			// TODO: remove for production
-			e1.printStackTrace();
 		}
 	}
 	
@@ -255,8 +251,6 @@ public class Server implements Runnable {
 					}
 				} catch (InterruptedException e) {
 					// TODO: log to db
-					// TODO: remove for production
-					e.printStackTrace();
 					break;
 				}
 			}
@@ -271,19 +265,13 @@ public class Server implements Runnable {
 					}
 				} catch (InterruptedException e) {
 					// TODO: log to db
-					// TODO: remove for production
-					e.printStackTrace();
 					break;
 				}
 			}
 		} catch (IOException | SQLException e) {
 			// TODO: log to db
-			// TODO: remove for production
-			e.printStackTrace();
 		} catch (InterruptedException e) {
 			// TODO: log to db
-			// TODO: remove for production
-			e.printStackTrace();
 		}
 		
 		dbDataSource.close();
@@ -296,8 +284,6 @@ public class Server implements Runnable {
 			Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
 		} catch (IOException e1) {
 			// TODO: log to db
-			// TODO: remove for production
-			e1.printStackTrace();
 		}
 	}
 	
@@ -926,8 +912,6 @@ public class Server implements Runnable {
 			// For debugging. Otherwise RuntimeExceptions would go unnoticed.
 			} catch (Exception e) {
 				// TODO: log to db
-				// TODO: remove for production
-				e.printStackTrace();
 			} finally {
 				if (dbConnection != null) {
 					try {
