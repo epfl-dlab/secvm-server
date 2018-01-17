@@ -72,8 +72,13 @@ public class Server implements Runnable {
 	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 8;
 	
 	// TODO: maybe make those parameter of main()
-	public static final long MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES = 1000;
-	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 1000;
+	public static final long MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES = 600000;
+	// The clients have at least this much time to send their packages.
+	// Otherwise it might happen that a client loads the configuration file
+	// one second before the deadline and gets overloaded when trying to send
+	// all packages during this second.
+	public static final long MINIMUM_MILLIS_FOR_CLIENTS_TO_SEND_PACKAGES = 60000;
+	public static final long MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE = 20000;
 	public static final int SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP = 100;
 	
 	/*
@@ -201,7 +206,7 @@ public class Server implements Runnable {
 					}
 					int timeLeft = (int) (deadline - System.currentTimeMillis());
 					// update the time that is left for the clients to send their updates
-					if (timeLeft > 0) {
+					if (timeLeft > MINIMUM_MILLIS_FOR_CLIENTS_TO_SEND_PACKAGES) {
 						int numSvms = configurationJson.getAsJsonArray("timeLeft").size();
 						configurationJson.remove("timeLeft");
 						JsonArray updatedTimesLeft = new JsonArray();
@@ -209,9 +214,19 @@ public class Server implements Runnable {
 						configurationJson.add("timeLeft", updatedTimesLeft);
 						JsonObject wrappedConfigurationJson = DataUtils.wrapJsonInResultObject(configurationJson);
 						DataUtils.writeStringToFile(wrappedConfigurationJson.toString(), CONFIGURATION_FILE_PATH);
+						
+						Thread.sleep(1000);
+					} else {
+						// delete the configuration file so that only the clients that fetched it earlier
+						// and have enough time to send their packages participate in this round
+						try {
+							Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
+						} catch (IOException e1) {
+							// TODO: log to db
+						}
+						
+						Thread.sleep(MINIMUM_MILLIS_FOR_CLIENTS_TO_SEND_PACKAGES);
 					}
-
-					Thread.sleep(1000);
 				}
 				
 				Thread.sleep(MILLIS_TO_WAIT_AFTER_END_OF_DEADLINE);
