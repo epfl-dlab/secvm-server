@@ -713,7 +713,7 @@ public class Server implements Runnable {
 				new ExperimentConfigurationForClients.Features();
 		List<FeatureVectorProperties> currFeatureProperties = weightsConfiguration.getFeatures();
 		for (FeatureVectorProperties properties : currFeatureProperties) {
-			if (properties.getFeature_type() == "hosts") {
+			if (properties.getFeature_type().equals("hosts")) {
 				currFeaturesConfigEntry.idHosts = String.valueOf(properties.getId());
 				currFeaturesConfigEntry.numHosts = properties.getNum_features();
 				currFeaturesConfigEntry.numHashesHosts = properties.getNum_hashes();
