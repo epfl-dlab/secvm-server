@@ -22,14 +22,21 @@ public final class DataUtils {
 	
 	public static void applySubgradientUpdate(
 			List<Float> weights, int iteration, float lambda,
-			AtomicIntegerArray subgradient, int numGradientUpdateVectors) {
+			AtomicIntegerArray subgradient, int numGradientUpdateVectors,
+			int femaleMultiplier) {
 		
 		float stepSize = computeStepSize(iteration, lambda);
+		// We need to normalize by a factor larger than the number of participants in this
+		// training round because we count the female users' updates multiple time.
+		int numGradientUpdateVectorsAfterApplyingFemaleMultiplier =
+				((femaleMultiplier + 1) * numGradientUpdateVectors) /
+				(2 * femaleMultiplier);
 		
-		for (int i = 0; i < weights.size(); ++i) {
+		for (int i = 0; i < weights.size(); ++i) {			
 			weights.set(i,
 					(1 - stepSize * lambda) * weights.get(i) +
-					stepSize * subgradient.get(i) / numGradientUpdateVectors);
+					stepSize * subgradient.get(i) /
+					numGradientUpdateVectorsAfterApplyingFemaleMultiplier);
 		}
 	}
 	

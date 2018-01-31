@@ -82,6 +82,8 @@ public class Server implements Runnable {
 	public static final int SECONDS_TO_WAIT_FOR_HTTP_SERVER_TO_STOP = 100;
 	
 	/*
+	 * Parameters: <int> by how much the female users' updates should be weighed
+	 * as compared to the ones from the male users
 	 * Flags: -l Turn logging on. Turned off by default.
 	 * 
 	 * Command line control while running:
@@ -92,9 +94,17 @@ public class Server implements Runnable {
 	public static void main(String[] args) {
 		
 		Server server = new Server();
-		if (args.length > 0 && args[0].equals("-l")) {
+		
+		if (args.length == 0) {
+			System.out.println("Please specify the weight for the updates sent by female users.");
+			System.exit(0);
+		}
+		server.femaleMultiplier = Integer.valueOf(args[0]);
+		
+		if (args.length > 1 && args[0].equals("-l")) {
 			server.packageLogging = true;
 		}
+		
 		Thread mainServerThread = new Thread(server);
 		mainServerThread.start();
 		
@@ -140,6 +150,9 @@ public class Server implements Runnable {
 	
 	// Should all received packages be logged to the database?
 	private boolean packageLogging = false;
+	
+	// By how much should the female updates be weighed in relation to the male updates?
+	private int femaleMultiplier = 1;
 	
 	Map<ServerRequestId, TrainWeightsConfiguration> trainConfigurations;
 	Map<ServerRequestId, TestWeightsConfiguration> testConfigurations;
@@ -535,7 +548,8 @@ public class Server implements Runnable {
 					// we need to apply the subgradient update to the weight vector
 					// which isn't necessary in the case of the initial weight vector
 					} else {
-						DataUtils.applySubgradientUpdate(currWeights, iteration, lambda, currGradientNotNormalized, numParticipants);
+						DataUtils.applySubgradientUpdate(currWeights, iteration, lambda,
+								currGradientNotNormalized, numParticipants, femaleMultiplier);
 						currWeightsBase64 = DataUtils.floatListToBase64(currWeights);
 					}
 					
@@ -883,7 +897,8 @@ public class Server implements Runnable {
 									if (value == 0) {
 										configurationToUpdate.decrementGradientNotNormalizedByIndex(index);
 									} else {
-										configurationToUpdate.incrementGradientNotNormalizedByIndex(index);
+										configurationToUpdate.setGradientNotNormalizedByIndex(index,
+												configurationToUpdate.getGradientNotNormalizedByIndex(index) + femaleMultiplier);
 									}
 							}
 						} finally {
