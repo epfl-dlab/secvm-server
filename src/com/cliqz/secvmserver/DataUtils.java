@@ -40,7 +40,6 @@ public final class DataUtils {
 		}
 	}
 	
-	// TODO: The Base64 encoding isn't the same for the client and the server. Fix this.
 	public static String integerListToBase64(List<Integer> list) {
 		ByteBuffer byteBuffer = ByteBuffer.allocate(list.size() * Integer.BYTES);
 		for (int entry : list) {
