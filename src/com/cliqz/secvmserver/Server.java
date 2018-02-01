@@ -49,6 +49,8 @@ public class Server implements Runnable {
 	public static final String DB_SERVER = "localhost";
 	public static final String DB_NAME = "SecVM_DB";
 	
+	public static final boolean ERROR_LOGGING = true;
+	
 //	public static final String CONFIGURATION_FILE_PATH = "configuration.json";
 //	public static final String WEIGHTS_FILE_NETWORK_PATH = "http://localhost:8000/";
 //	public static final String WEIGHTS_FILE_LOCAL_PATH = "./";
@@ -127,10 +129,16 @@ public class Server implements Runnable {
 			try {
 				mainServerThread.join();
 			} catch (InterruptedException e) {
+				if (ERROR_LOGGING) {
+					System.out.println(e);
+				}
 				// TODO: log to db
 			}
 			System.out.println("stopped");
 		} catch (IOException e1) {
+			if (ERROR_LOGGING) {
+				System.out.println(e1);
+			}
 			// TODO: log to db
 		}
 	}
@@ -235,6 +243,9 @@ public class Server implements Runnable {
 						try {
 							Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
 						} catch (IOException e1) {
+							if (ERROR_LOGGING) {
+								System.out.println(e1);
+							}
 							// TODO: log to db
 						}
 						
@@ -278,6 +289,9 @@ public class Server implements Runnable {
 						break;
 					}
 				} catch (InterruptedException e) {
+					if (ERROR_LOGGING) {
+						System.out.println(e);
+					}
 					// TODO: log to db
 					break;
 				}
@@ -292,13 +306,22 @@ public class Server implements Runnable {
 						break;
 					}
 				} catch (InterruptedException e) {
+					if (ERROR_LOGGING) {
+						System.out.println(e);
+					}
 					// TODO: log to db
 					break;
 				}
 			}
 		} catch (IOException | SQLException e) {
+			if (ERROR_LOGGING) {
+				System.out.println(e);
+			}
 			// TODO: log to db
 		} catch (InterruptedException e) {
+			if (ERROR_LOGGING) {
+				System.out.println(e);
+			}
 			// TODO: log to db
 		}
 		
@@ -311,6 +334,9 @@ public class Server implements Runnable {
 		try {
 			Files.deleteIfExists(Paths.get(CONFIGURATION_FILE_PATH));
 		} catch (IOException e1) {
+			if (ERROR_LOGGING) {
+				System.out.println(e1);
+			}
 			// TODO: log to db
 		}
 	}
@@ -811,6 +837,9 @@ public class Server implements Runnable {
 					try {
 						dbConnection = dbDataSource.getConnection();
 					} catch (SQLException e){
+						if (ERROR_LOGGING) {
+							System.out.println(e);
+						}
 						// TODO: log to db
 					}
 				}
@@ -839,6 +868,9 @@ public class Server implements Runnable {
 									.createPreparedStatement(dbConnection);
 							packageReceived.setAssociatedDbStatement(packageInsertStatement);
 						} catch (SQLException e) {
+							if (ERROR_LOGGING) {
+								System.out.println(e);
+							}
 							// TODO: log to db
 						}
 					}
@@ -883,6 +915,9 @@ public class Server implements Runnable {
 										.createPreparedStatement(dbConnection);
 								packageReceived.setAssociatedDbStatement(packageInsertStatement);
 							} catch (SQLException e) {
+								if (ERROR_LOGGING) {
+									System.out.println(e);
+								}
 								// TODO: log to db
 							}
 						}
@@ -915,6 +950,9 @@ public class Server implements Runnable {
 										.createPreparedStatement(dbConnection);
 								packageReceived.setAssociatedDbStatement(packageInsertStatement);
 							} catch (SQLException e) {
+								if (ERROR_LOGGING) {
+									System.out.println(e);
+								}
 								// TODO: log to db
 							}
 						}
@@ -938,15 +976,24 @@ public class Server implements Runnable {
 					packageLoggingExecutor.submit(new DatabaseLogger(packageReceived));
 				}
 			} catch (IOException e) {
+				if (ERROR_LOGGING) {
+					System.out.println(e);
+				}
 				// TODO: log to db
 			// For debugging. Otherwise RuntimeExceptions would go unnoticed.
 			} catch (Exception e) {
+				if (ERROR_LOGGING) {
+					System.out.println(e);
+				}
 				// TODO: log to db
 			} finally {
 				if (dbConnection != null) {
 					try {
 						dbConnection.close();
 					} catch (SQLException e) {
+						if (ERROR_LOGGING) {
+							System.out.println(e);
+						}
 						// TODO: log to db
 					}
 				}
