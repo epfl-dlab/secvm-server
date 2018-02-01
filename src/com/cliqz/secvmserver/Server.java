@@ -71,7 +71,7 @@ public class Server implements Runnable {
 	
 	public static final int NUM_WEIGHT_VECTORS_TO_AVERAGE_FOR_TESTING = 2;
 	
-	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 8;
+	public static final int NUM_THREADS_PROCESSING_INCOMING_PACKAGES = 4;
 	
 	// TODO: maybe make those parameter of main()
 	public static final long MILLIS_TO_WAIT_FOR_RECEIVING_USER_PACKAGES = 600000;
@@ -192,7 +192,7 @@ public class Server implements Runnable {
 			ExecutorService packageLoggingExecutor = Executors.newSingleThreadExecutor();
 			
 			httpServer.createContext("/", new PackageHandler(packageLoggingExecutor));
-			httpServer.setExecutor(null);
+			httpServer.setExecutor(packageHandlerExecutor);
 			httpServer.start();
 			
 			outer: while (true) {
