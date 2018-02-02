@@ -999,7 +999,7 @@ public class Server implements Runnable {
 				}
 				
 				// Confirm that a package has arrived.
-                httpExchange.getResponseHeaders().set("Content-Type", "appication/json");
+                httpExchange.getResponseHeaders().set("Content-Type", "application/json");
                 httpExchange.sendResponseHeaders(200, PACKAGE_RESPONSE.length());
                 OutputStream httpExchangeOutputStream = httpExchange.getResponseBody();
                 httpExchangeOutputStream.write(PACKAGE_RESPONSE.getBytes());
