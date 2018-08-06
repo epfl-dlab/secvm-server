@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.cliqz.secvmserver</groupId>
   <artifactId>secvmserver</artifactId>
-  <version>0.1-SNAPSHOT</version>
+  <version>1.0</version>
   <name>SecVM Server</name>
   <properties>
     <java.version>1.8</java.version>
