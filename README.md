@@ -1,6 +1,6 @@
 # SecVM Server
 
-This repository contains the server code for the online evaluation in Sec. 6 of the paper 'Privacy-Preserving Classification with Secret Vector Machines': https://arxiv.org/abs/1907.03373
+This repository contains the server code for the online evaluation in Sec. 6 of the paper ['Privacy-Preserving Classification with Secret Vector Machines'](https://arxiv.org/abs/1907.03373).
 
 The README in the respository with the [client code](https://github.com/cliqz-oss/browser-core/tree/6945afff7be667ed74b0b7476195678262120baf/modules/secvm/sources) contains more information on the project and on the implementation.
 
